@@ -19,3 +19,18 @@ let x = Alternative {
   second = Match
 }
 
+
+type regex =
+  | Alternative of regex * regex
+  | Concatenation of regex * regex
+  | Character of char
+  | Empty;;
+
+let parse_regex s =
+  let rec parse_regex' chars =
+    match chars with
+    | c :: rest -> Concatenation (Character c, parse_regex' rest)
+    | [] -> Empty in
+  parse_regex' (explode s);;
+
+parse_regex "hey"
