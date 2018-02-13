@@ -7,8 +7,8 @@ let explode s =
   expl (String.length s - 1) [];;
 
 type
-  transition = {c: char; next: nfa} and
-  alternative = {first: nfa; second: nfa} and
+  transition = {c: char; mutable next: nfa} and
+  alternative = {mutable first: nfa; mutable second: nfa} and
   nfa =
     | Transition of transition
     | Alternative of alternative
