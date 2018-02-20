@@ -11,4 +11,11 @@ null
   "field5": /a/,
   "field6": //
 }
+//
+/h/
+/hi/
+/freee*/
+/this|that/
+/(hi)/
+/abc(hi)*ab*c/
 /hi(hello)*ab*(foo|baz*|bar)(onions(have(layers*)test))/
