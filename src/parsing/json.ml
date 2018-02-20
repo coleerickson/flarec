@@ -25,11 +25,11 @@ open Out_channel
 
 let rec print_regex outc = function
   | `Concat (r1, r2) -> print_regex outc r1; print_regex outc r2
-  | `Group r -> output_string outc " g(g "; print_regex outc r; output_string outc " g)g "
+  | `Group r -> output_string outc "("; print_regex outc r; output_string outc ")"
   | `Alternation (r1, r2) -> print_regex outc r1; output_string outc "|"; print_regex outc r2
-  | `Repetition r -> output_string outc " ("; print_regex outc r; output_string outc ")* "
-  | `Wildcard   -> output_string outc " . "
-  | `Char c     -> printf "char[%c]" c
+  | `Repetition r -> output_string outc "("; print_regex outc r; output_string outc ")*"
+  | `Wildcard   -> output_string outc "."
+  | `Char c     -> printf "%c" c
   | `Empty      -> output_string outc " rempty! "
 
 let rec output_value outc = function
