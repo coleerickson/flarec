@@ -24,7 +24,7 @@ let float = digit* frac? exp?
 (* part 3 *)
 let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let id = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
+let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_']
 
 (* part 4 *)
 rule read =
@@ -37,12 +37,15 @@ rule read =
   | "false"  { FALSE }
   | "null"   { NULL }
   | '"'      { read_string (Buffer.create 17) lexbuf }
-  | '('      { LEFT_BRACE }
-  | ')'      { RIGHT_BRACE }
+  | '('      { LEFT_PAREN }
+  | ')'      { RIGHT_PAREN }
+  | '{'      { LEFT_BRACE }
+  | '}'      { RIGHT_BRACE }
   | '['      { LEFT_BRACK }
   | ']'      { RIGHT_BRACK }
   | ':'      { COLON }
   | ','      { COMMA }
+  | lit_char { CHAR (Lexing.lexeme lexbuf).[0] }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof      { EOF }
 

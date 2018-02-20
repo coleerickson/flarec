@@ -4,6 +4,8 @@
 %token TRUE
 %token FALSE
 %token NULL
+%token LEFT_PAREN
+%token RIGHT_PAREN
 %token LEFT_BRACE
 %token RIGHT_BRACE
 %token LEFT_BRACK
@@ -11,6 +13,7 @@
 %token COLON
 %token COMMA
 %token EOF
+%token <char> CHAR
 
 %start <Json.value option> prog
 
@@ -21,6 +24,7 @@ prog:
   | EOF       { None   } ;
 
 value:
+  | LEFT_PAREN; s = STRING; RIGHT_PAREN       { `Regex (`RString s)  }
   | LEFT_BRACE; obj = obj_fields; RIGHT_BRACE { `Assoc obj  }
   | LEFT_BRACK; vl = list_fields; RIGHT_BRACK { `List vl    }
   | s = STRING                                { `String s   }
@@ -28,7 +32,8 @@ value:
   | x = FLOAT                                 { `Float x    }
   | TRUE                                      { `Bool true  }
   | FALSE                                     { `Bool false }
-  | NULL                                      { `Null       } ;
+  | NULL                                      { `Null       }
+  | c = CHAR                                  { `Regex (`Char c) };
 
 obj_fields:
     obj = separated_list(COMMA, obj_field)    { obj } ;

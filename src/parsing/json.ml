@@ -1,4 +1,10 @@
+type regex = [
+  | `Char of char
+  | `RString of string
+]
+
 type value = [
+  | `Regex of regex
   | `Assoc of (string * value) list
   | `Bool of bool
   | `Float of float
@@ -12,6 +18,8 @@ type value = [
 open Core
 open Out_channel
 let rec output_value outc = function
+  | `Regex `RString s    -> printf "regex/%s/" s
+  | `Regex `Char c     -> printf "char[%c]" c
   | `Assoc obj  -> print_assoc outc obj
   | `List l     -> print_list outc l
   | `String s   -> printf "\"%s\"" s
