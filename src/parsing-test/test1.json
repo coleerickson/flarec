@@ -11,4 +11,4 @@ null
   "field5": /a/,
   "field6": //
 }
-/hi(hello)*ab*(foo|baz|bar)/
+/hi(hello)*ab*(foo|baz*|bar)(onions(have(layers*)test))/
