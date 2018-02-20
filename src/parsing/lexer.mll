@@ -46,6 +46,8 @@ rule read =
   | ':'      { COLON }
   | ','      { COMMA }
   | lit_char { CHAR (Lexing.lexeme lexbuf).[0] }
+  | '/'      { SLASH }
+  | '*'      { STAR }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof      { EOF }
 

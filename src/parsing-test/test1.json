@@ -1,13 +1,13 @@
 true
 false
 null
-ab  c d  ee
+/abcd*a/
 [1, 2, 3., 4.0, .5, 5.5e5, 6.3]
 "Hello World"
-("abc")
 { "field1": "Hello",
   "field2": 17e13,
   "field3": [1, 2, 3],
   "field4": { "fieldA": 1, "fieldB": "Hello" },
-  "field5": ("abcdef")
+  "field5": /a/,
+  "field6": //
 }

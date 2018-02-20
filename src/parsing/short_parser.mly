@@ -14,6 +14,12 @@
 %token COMMA
 %token EOF
 %token <char> CHAR
+%token SLASH
+%token STAR
+
+(* Precedences *)
+%left STAR
+%left CONCAT
 
 %start <Json.value option> prog
 
@@ -24,7 +30,7 @@ prog:
   | EOF       { None   } ;
 
 value:
-  | LEFT_PAREN; s = STRING; RIGHT_PAREN       { `Regex (`RString s)  }
+  | SLASH; r = regex; SLASH             { `Regex r    }
   | LEFT_BRACE; obj = obj_fields; RIGHT_BRACE { `Assoc obj  }
   | LEFT_BRACK; vl = list_fields; RIGHT_BRACK { `List vl    }
   | s = STRING                                { `String s   }
@@ -32,8 +38,7 @@ value:
   | x = FLOAT                                 { `Float x    }
   | TRUE                                      { `Bool true  }
   | FALSE                                     { `Bool false }
-  | NULL                                      { `Null       }
-  | c = CHAR                                  { `Regex (`Char c) };
+  | NULL                                      { `Null       };
 
 obj_fields:
     obj = separated_list(COMMA, obj_field)    { obj } ;
@@ -43,3 +48,14 @@ obj_field:
 
 list_fields:
     vl = separated_list(COMMA, value)         { vl } ;
+
+regex:
+  | LEFT_PAREN; r = regex; RIGHT_PAREN  { `Group r }
+  | c = CHAR                            { `Char c }
+  | { `Empty }
+  | r = regex; STAR                     { `Repetition r }
+  | r = regex; r2 = regex                 { `Concat (r, r2 ) } %prec CONCAT
+  ;
+
+
+  /* | LEFT_PAREN; r = regex; RIGHT_PAREN        { r } */
