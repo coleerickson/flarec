@@ -1,4 +1,4 @@
-open Core.Std
+open Core
 open Lexer
 open Lexing
 
@@ -35,5 +35,5 @@ let loop filename () =
 let () =
   Command.basic ~summary:"Parse and display JSON"
     Command.Spec.(empty +> anon ("filename" %: file))
-    loop 
+    loop
   |> Command.run
