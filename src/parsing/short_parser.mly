@@ -16,15 +16,12 @@
 %token <char> CHAR
 %token SLASH
 %token STAR
-
-(* Precedences *)
-%left STAR
-%left CONCAT
+%token OR_PIPE
+%token PERIOD
 
 %start <Json.value option> prog
 
 %%
-(* part 1 *)
 prog:
   | v = value { Some v }
   | EOF       { None   } ;
@@ -49,13 +46,25 @@ obj_field:
 list_fields:
     vl = separated_list(COMMA, value)         { vl } ;
 
+(* Inspired by BNF for regex at http://www.cs.sfu.ca/~cameron/Teaching/384/99-3/regexp-plg.html *)
 regex:
-  | LEFT_PAREN; r = regex; RIGHT_PAREN  { `Group r }
-  | c = CHAR                            { `Char c }
-  | { `Empty }
-  | r = regex; STAR                     { `Repetition r }
-  | r = regex; r2 = regex                 { `Concat (r, r2 ) } %prec CONCAT
+  | r1 = regex; OR_PIPE; r2 = simple     { `Alternation (r1, r2) }
+  | r = simple                           { r }
+  |                                      { `Empty }
   ;
 
+simple:
+  | r1 = simple; r2 = basic              { `Concat (r1, r2) }
+  | r = basic                            { r }
+  ;
 
-  /* | LEFT_PAREN; r = regex; RIGHT_PAREN        { r } */
+basic:
+  | r = elementary; STAR                 { `Repetition r }
+  | r = elementary                       { r }
+  ;
+
+elementary:
+  | LEFT_PAREN; r = regex; RIGHT_PAREN  { `Group r }
+  | PERIOD                              { `Wildcard }
+  | c = CHAR                            { `Char c }
+  ;

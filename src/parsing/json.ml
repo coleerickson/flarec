@@ -1,9 +1,10 @@
 type regex = [
   | `Concat of regex * regex
   | `Group of regex
+  | `Alternation of regex * regex
   | `Repetition of regex
   | `Char of char
-  | `RString of string
+  | `Wildcard
   | `Empty
 ]
 
@@ -25,8 +26,9 @@ open Out_channel
 let rec print_regex outc = function
   | `Concat (r1, r2) -> print_regex outc r1; print_regex outc r2
   | `Group r -> output_string outc " g(g "; print_regex outc r; output_string outc " g)g "
+  | `Alternation (r1, r2) -> print_regex outc r1; output_string outc "|"; print_regex outc r2
   | `Repetition r -> output_string outc " ("; print_regex outc r; output_string outc ")* "
-  | `RString s    -> printf "regex/%s/" s
+  | `Wildcard   -> output_string outc " . "
   | `Char c     -> printf "char[%c]" c
   | `Empty      -> output_string outc " rempty! "
 

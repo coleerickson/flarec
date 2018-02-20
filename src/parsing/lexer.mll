@@ -48,6 +48,8 @@ rule read =
   | lit_char { CHAR (Lexing.lexeme lexbuf).[0] }
   | '/'      { SLASH }
   | '*'      { STAR }
+  | '|'      { OR_PIPE }
+  | '.'      { PERIOD }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof      { EOF }
 
