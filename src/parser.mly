@@ -16,8 +16,8 @@ prog:
   | EOF       { `Empty  } ;
 
 regex:
-  | r1 = regex; r2 = regex { `Concat (r1, r2) }
-  | g = group; STAR { `Repetition g }
+  /* | g = group; STAR { `Repetition g } */
+  /* | r1 = regex; r2 = regex { `Concat (r1, r2) } */
   /* | LEFT_BRACK; vl = list_fields; RIGHT_BRACK { `List vl    }
   | s = STRING                                { `String s   }
   | i = INT                                   { `Int i      }

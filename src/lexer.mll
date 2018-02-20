@@ -38,5 +38,5 @@ rule read =
   | '.'       { PERIOD }
   | '|'       { OR_PIPE }
   | c         { CHAR (Lexing.lexeme lexbuf).[0] }
-  | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof       { EOF }
+  | _         { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }

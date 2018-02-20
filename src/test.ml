@@ -1,4 +1,5 @@
 open Core
+open Out_channel
 open Lexer
 open Lexing
 
@@ -33,11 +34,11 @@ let loop filename () =
   let inx = In_channel.create filename in
   let lexbuf = Lexing.from_channel inx in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  (try Lexer.read lexbuf with
+  (* (try Lexer.read lexbuf with
   | SyntaxError msg ->
     fprintf stderr "%a: %s\n" print_position lexbuf msg;
-    []
-  (* parse_and_print lexbuf; *)
+    []) *)
+  parse_and_print lexbuf;
   In_channel.close inx
 
 (* part 2 *)

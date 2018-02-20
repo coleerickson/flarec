@@ -12,10 +12,11 @@ type regex = [
 open Core
 open Out_channel
 
-let output_value outc r = "hey"
-(* let rec output_value outc = function
+(* let output_value outc r = "hey" *)
+ let rec output_value outc = function
   | `Char c          -> output_string outc c
-  | `Concat (r1, r2) -> printf "%s c&c %s" (output_value outc r1) (output_value outc r2)
+  | _ -> output_string outc "help"
+  (* | `Concat (r1, r2) -> printf "%s c&c %s" (output_value outc r1) (output_value outc r2)
   | `Wildcard        -> output_string outc "."
   | `Alternation r   -> printf " |(| %s |)| " (output_value outc r)
   | `Repetition r    -> printf "%s*" (output_value outc r)
