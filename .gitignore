@@ -2,3 +2,6 @@ a.out
 *.cmi
 *.cmo
 _build
+*.native
+*.byte
+out.txt
