@@ -23,6 +23,13 @@ type value = [
 open Core
 open Out_channel
 
+let repeat s =
+  let rec rep output = function
+  | 0 -> output
+  | i -> (rep (s ^ output) (i - 1))
+  | _ -> raise (Invalid_argument "Repetition must occur at least 0 times") in
+  rep ""
+
 let rec print_regex outc = function
   | `Concat (r1, r2) -> print_regex outc r1; print_regex outc r2
   | `Group r -> output_string outc "("; print_regex outc r; output_string outc ")"
