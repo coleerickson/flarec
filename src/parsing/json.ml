@@ -39,8 +39,40 @@ let rec print_regex outc = function
   | `Char c     -> printf "%c" c
   | `Empty      -> output_string outc " rempty! "
 
+(* TODO implement list to string on regex *)
+(* Fix so that it uses linked lists efficiently see https://stackoverflow.com/a/28969106*)
+let regex_to_s r =
+  let rec r_to_s indent = function
+  | `Concat (r1, r2) ->
+    (repeat "  " indent) ^ "(concat\n" ^
+                            (r_to_s (indent + 1) r1) ^
+                            (r_to_s (indent + 1) r2) ^
+    (repeat "  " indent) ^ ")\n"
+  | `Group r ->
+    (repeat "  " indent) ^ "(group\n" ^
+                            (r_to_s (indent + 1) r) ^
+    (repeat "  " indent) ^ ")\n"
+  | `Alternation (r1, r2) ->
+    (repeat "  " indent) ^ "(alternation\n" ^
+                           (r_to_s (indent + 1) r1) ^
+                           (r_to_s (indent + 1) r2) ^
+    (repeat "  " indent) ^ ")\n"
+  | `Repetition r ->
+    (repeat "  " indent) ^ "(repetition\n" ^
+                           (r_to_s (indent + 1) r) ^
+    (repeat "  " indent) ^ ")\n"
+  | `Wildcard   ->
+    (repeat "  " indent) ^ "(wildcard)\n"
+  | `Char c     ->
+    (repeat "  " indent) ^ "'" ^ String.make 1 c ^ "'\n"
+  | `Empty      ->
+    (repeat "  " indent) ^ "(empty)\n" in
+  r_to_s 0 r
+
+  (* | _ -> (repeat "hey" 0) *)
+
 let rec output_value outc = function
-  | `Regex r    -> output_string outc "regex/"; print_regex outc r; output_string outc "/"
+  | `Regex r    -> printf "%s" (regex_to_s r)
   | `Assoc obj  -> print_assoc outc obj
   | `List l     -> print_list outc l
   | `String s   -> printf "\"%s\"" s
