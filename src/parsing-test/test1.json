@@ -18,4 +18,3 @@ null
 /this|that/
 /(hi)/
 /abc(hi)*ab*c/
-/hi(hello)*ab*(foo|baz*|bar)(onions(have(layers*)test))/

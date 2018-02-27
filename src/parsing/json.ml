@@ -19,28 +19,59 @@ type value = [
   | `String of string
 ]
 
+(* https://stackoverflow.com/a/10132568 *)
+module IntMap = Map.Make(struct type t = int let compare = compare end)
+type nfa = {
+  edges: (int * char option) list IntMap.t;
+  source: int;
+  sink: int;
+  finals: int list;
+};;
+
+let rec regex_to_nfa r =
+  let i = ref 0 in
+  let next_i = fun () -> i := !i + 1; !i - 1 in
+  match r with
+  | `Char c ->
+    let source = next_i () in
+    let sink = next_i () in
+    let edges = IntMap.empty in
+    let edges = IntMap.add source [(sink, Some c)] edges in
+    { edges; source; sink; finals = [] }
+  | _ -> raise (Invalid_argument "not implemented");;
+  (* | `Concat (r1, r2) ->
+    let n1 = regex_to_nfa r1 in
+    let n2 = regex_to_nfa r2 in
+    let t = IntMap.empty;;
+    let t = IntMap.add
+  | `Group r -> output_string outc "("; print_regex outc r; output_string outc ")"
+  | `Alternation (r1, r2) -> print_regex outc r1; output_string outc "|"; print_regex outc r2
+  | `Repetition r -> output_string outc "("; print_regex outc r; output_string outc ")*"
+  | `Wildcard   -> output_string outc "."
+  | `Empty      -> output_string outc " rempty! ";; *)
+
+
 (* part 1 *)
 open Core
 open Out_channel
 
-let repeat s =
-  let rec rep output = function
-  | 0 -> output
-  | i -> (rep (s ^ output) (i - 1))
-  | _ -> raise (Invalid_argument "Repetition must occur at least 0 times") in
-  rep ""
+let repeat s n =
+  let rec rep output i =
+  if i = 0 then output
+  else if i > 0 then (rep (s ^ output) (i - 1))
+  else raise (Invalid_argument "Repetition must occur at least 0 times") in
+  rep "" n
 
 let rec print_regex outc = function
   | `Concat (r1, r2) -> print_regex outc r1; print_regex outc r2
   | `Group r -> output_string outc "("; print_regex outc r; output_string outc ")"
   | `Alternation (r1, r2) -> print_regex outc r1; output_string outc "|"; print_regex outc r2
   | `Repetition r -> output_string outc "("; print_regex outc r; output_string outc ")*"
-  | `Wildcard   -> output_string outc "."
-  | `Char c     -> printf "%c" c
-  | `Empty      -> output_string outc " rempty! "
+  | `Wildcard -> output_string outc "."
+  | `Char c -> printf "%c" c
+  | `Empty -> output_string outc " rempty! "
 
-(* TODO implement list to string on regex *)
-(* Fix so that it uses linked lists efficiently see https://stackoverflow.com/a/28969106*)
+(* Fix so that it uses linked lists to efficiently do string concatenation see https://stackoverflow.com/a/28969106*)
 let regex_to_s r =
   let rec r_to_s indent = function
   | `Concat (r1, r2) ->
@@ -81,6 +112,49 @@ let rec output_value outc = function
   | `Bool true  -> output_string outc "true"
   | `Bool false -> output_string outc "false"
   | `Null       -> output_string outc "null"
+
+(* output_string outc "regex/"; print_regex outc r; output_string outc "/" *)
+
+(* let eval s r =
+  let rec eval_seq l r =
+  let (hd::tl) = l in
+  match r with
+  | `Concat (r1, r2) -> eval_seq s r1 && eval_seq s r2
+  | `Group r -> eval_seq r (* TODO Be sure to add capturing groups to output here *)
+  | `Alternation (r1, r2) -> eval_seq s r1 || eval_seq r2
+  | `Repetition r -> eval_seq s r || eval s (`Repetition r)
+  | `Wildcard   -> if
+  | `Char c     -> printf "%c" c
+  | `Empty      -> output_string outc " rempty! " in
+  eval_seq (explode s) r *)
+(* this doesn't work because we need to be able to keep track of which states we're in at a given moment *)
+
+(* We need to advance every state in every recursion *)
+
+(* this function maps from states to lists of states, consuming one character of the input *)
+(* we should deduplicate them afterward *)
+(* let step c = function
+  | `Concat (r1, r2) -> eval_seq s r1 && eval_seq s r2
+  | `Group r -> eval_seq r (* TODO Be sure to add capturing groups to output here *)
+  | `Alternation (r1, r2) -> eval_seq s r1 || eval_seq r2
+  | `Repetition r -> eval_seq s r || eval s (`Repetition r)
+  | `Wildcard   -> if
+  | `Char c     -> printf "%c" c
+  | `Empty      -> output_string outc " rempty! " in *)
+
+(* let eval s r =
+  let rec eval_seq l r =
+  let (hd::tl) = l in
+  match r with
+  | `Concat (r1, r2) -> eval_seq s r1 && eval_seq s r2
+  | `Group r -> eval_seq r (* TODO Be sure to add capturing groups to output here *)
+  | `Alternation (r1, r2) -> eval_seq s r1 || eval_seq r2
+  | `Repetition r -> eval_seq s r || eval s (`Repetition r)
+  | `Wildcard   -> if
+  | `Char c     -> printf "%c" c
+  | `Empty      -> output_string outc " rempty! " in
+  eval_seq (explode s) r *)
+
 
 and print_assoc outc obj =
   output_string outc "{ ";
