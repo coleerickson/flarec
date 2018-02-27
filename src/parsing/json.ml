@@ -28,6 +28,29 @@ type nfa = {
   finals: int list;
 };;
 
+let list_map_union = IntMap.merge (fun key a b ->
+  match a, b with
+  | Some a, Some b -> Some (a @ b)
+  | Some a, None -> Some a
+  | None, Some b -> Some b
+  | None, None -> None
+);;
+
+let list_map_append k v m =
+  let value_to_insert =
+  match IntMap.find_opt k m with
+  | Some existing -> existing @ v
+  | None -> v in
+  let m = IntMap.remove k m in
+  IntMap.add k value_to_insert m;;
+
+
+(* let list_map_append x m = IntMap.update x (fun value ->
+  match value with
+  | Some existing -> existing @ x
+  | None -> Some x
+) m;; *)
+
 let rec regex_to_nfa r =
   let i = ref 0 in
   let next_i = fun () -> i := !i + 1; !i - 1 in
@@ -36,7 +59,28 @@ let rec regex_to_nfa r =
     let source = next_i () in
     let sink = next_i () in
     let edges = IntMap.empty in
-    let edges = IntMap.add source [(sink, Some c)] edges in
+    let edges = list_map_append source [(sink, Some c)] edges in
+    { edges; source; sink; finals = [] }
+  | `Alternation (r1, r2) ->
+    let source = next_i () in
+    let sink = next_i () in
+    let nfa1 = regex_to_nfa r1 in
+    let nfa2 = regex_to_nfa r2 in
+    let edges = list_map_union nfa1.edges nfa2.edges in
+    let edges = list_map_append source [(nfa1.source, None); (nfa2.source, None)] edges in
+    let edges = list_map_append nfa1.sink [(sink, None)] edges in
+    let edges = list_map_append nfa2.sink [(sink, None)] edges in
+    let edges = list_map_union nfa1.edges nfa2.edges in
+    { edges; source; sink; finals = [] }
+  | `Group r -> regex_to_nfa r (* TODO submatch extraction *)
+  | `Repetition r ->
+    let source = next_i () in
+    let sink = next_i () in
+    let nfa1 = regex_to_nfa r in
+    let edges = nfa1.edges in
+    let edges = list_map_append source [(nfa1.source, None)] edges in
+    let edges = list_map_append nfa1.sink [(sink, None)] edges in
+    let edges = list_map_append sink [(source, None)] edges in
     { edges; source; sink; finals = [] }
   | _ -> raise (Invalid_argument "not implemented");;
   (* | `Concat (r1, r2) ->
@@ -44,9 +88,6 @@ let rec regex_to_nfa r =
     let n2 = regex_to_nfa r2 in
     let t = IntMap.empty;;
     let t = IntMap.add
-  | `Group r -> output_string outc "("; print_regex outc r; output_string outc ")"
-  | `Alternation (r1, r2) -> print_regex outc r1; output_string outc "|"; print_regex outc r2
-  | `Repetition r -> output_string outc "("; print_regex outc r; output_string outc ")*"
   | `Wildcard   -> output_string outc "."
   | `Empty      -> output_string outc " rempty! ";; *)
 
