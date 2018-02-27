@@ -21,6 +21,15 @@ type value = [
 
 (* https://stackoverflow.com/a/10132568 *)
 module IntMap = Map.Make(struct type t = int let compare = compare end)
+
+(* TODO
+type transition =
+  epsilon
+  char
+  wildcard
+;;
+*)
+
 type nfa = {
   edges: (int * char option) list IntMap.t;
   source: int;
@@ -54,6 +63,7 @@ let list_map_append k v m =
 let rec regex_to_nfa r =
   let i = ref 0 in
   let next_i = fun () -> i := !i + 1; !i - 1 in
+  let rec r_to_n r =
   match r with
   | `Char c ->
     let source = next_i () in
@@ -64,32 +74,61 @@ let rec regex_to_nfa r =
   | `Alternation (r1, r2) ->
     let source = next_i () in
     let sink = next_i () in
-    let nfa1 = regex_to_nfa r1 in
-    let nfa2 = regex_to_nfa r2 in
+    let nfa1 = r_to_n r1 in
+    let nfa2 = r_to_n r2 in
     let edges = list_map_union nfa1.edges nfa2.edges in
     let edges = list_map_append source [(nfa1.source, None); (nfa2.source, None)] edges in
     let edges = list_map_append nfa1.sink [(sink, None)] edges in
     let edges = list_map_append nfa2.sink [(sink, None)] edges in
-    let edges = list_map_union nfa1.edges nfa2.edges in
     { edges; source; sink; finals = [] }
-  | `Group r -> regex_to_nfa r (* TODO submatch extraction *)
+  | `Group r -> r_to_n r (* TODO submatch extraction *)
   | `Repetition r ->
     let source = next_i () in
     let sink = next_i () in
-    let nfa1 = regex_to_nfa r in
+    let nfa1 = r_to_n r in
     let edges = nfa1.edges in
     let edges = list_map_append source [(nfa1.source, None)] edges in
     let edges = list_map_append nfa1.sink [(sink, None)] edges in
     let edges = list_map_append sink [(source, None)] edges in
     { edges; source; sink; finals = [] }
-  | _ -> raise (Invalid_argument "not implemented");;
-  (* | `Concat (r1, r2) ->
-    let n1 = regex_to_nfa r1 in
-    let n2 = regex_to_nfa r2 in
-    let t = IntMap.empty;;
-    let t = IntMap.add
-  | `Wildcard   -> output_string outc "."
-  | `Empty      -> output_string outc " rempty! ";; *)
+  | `Concat (r1, r2) ->
+    let source = next_i () in
+    let sink = next_i () in
+    let nfa1 = r_to_n r1 in
+    let nfa2 = r_to_n r2 in
+    let edges = list_map_union nfa1.edges nfa2.edges in
+    let edges = list_map_append source [(nfa1.source, None)] edges in
+    let edges = list_map_append nfa1.sink [(nfa2.source, None)] edges in
+    let edges = list_map_append nfa2.sink [(sink, None)] edges in
+    { edges; source; sink; finals = [] }
+  | `Wildcard   ->
+    let source = next_i () in
+    let sink = next_i () in
+    let edges = IntMap.empty in
+    let edges = list_map_append source [(sink, Some '.')] edges in (* TODO actually represent wildcard transitions *)
+    { edges; source; sink; finals = [] }
+  | `Empty      ->
+    let source = next_i () in
+    let sink = next_i () in
+    let edges = IntMap.empty in
+    let edges = list_map_append source [(sink, None)] edges in
+    { edges; source; sink; finals = [] }
+  | _ -> raise (Invalid_argument "not implemented") in
+  r_to_n r;;
+
+(* TODO mark source and sink on graph *)
+let rec nfa_to_dot {edges; source; sink; finals} =
+  "digraph G {\n" ^ IntMap.fold (fun k vs result ->
+    result ^ (
+      List.fold_left (fun output (v, label) ->
+        output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
+          match label with
+          | Some label_char -> String.make 1 label_char
+          | None -> "None"
+        )
+      ) "" vs
+    )
+  ) edges "" ^ "}"
 
 
 (* part 1 *)
@@ -144,7 +183,8 @@ let regex_to_s r =
   (* | _ -> (repeat "hey" 0) *)
 
 let rec output_value outc = function
-  | `Regex r    -> printf "%s" (regex_to_s r)
+  | `Regex r    -> printf "%s" (nfa_to_dot (regex_to_nfa r))
+    (* | `Regex r    -> printf "%s" (regex_to_s r) *)
   | `Assoc obj  -> print_assoc outc obj
   | `List l     -> print_list outc l
   | `String s   -> printf "\"%s\"" s

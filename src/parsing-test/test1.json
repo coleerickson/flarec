@@ -17,4 +17,4 @@ null
 /freee*/
 /this|that/
 /(hi)/
-/abc(hi)*ab*c/
+/abc(hi|hey|hello)*ab*c/

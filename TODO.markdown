@@ -4,3 +4,4 @@
 * Week-by-week timeline
 * For evaluator of NFAs: favor one path for efficiency
 * Implement NFA transformation
+* Use OCamlGraph for visualization of automata
