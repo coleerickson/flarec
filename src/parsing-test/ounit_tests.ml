@@ -19,8 +19,14 @@ let list_map_append_test test_ctxt =
 let regex_to_nfa_test test_ctxt =
   let edges = IntMap.empty in
   let edges = IntMap.add 0 [(1, Some 'a')] edges in
-  let desired = { edges; source = 0; sink = 1; finals = [] } in
+  let desired = { edges; source = 0; sink = 1 } in
   assert_equal desired (regex_to_nfa (`Char 'a'));;
+
+let eval1 test_ctxt =
+assert_equal true (eval "a" (regex_to_nfa (`Char 'a')))
+
+let eval2 test_ctxt =
+  assert_equal true (eval "ab" (regex_to_nfa (`Concat (`Char 'a', `Char 'b')) ))
 
 
 (* Name the test cases and group them together *)
@@ -28,6 +34,8 @@ let suite =
 "suite">:::
  ["test1">:: test1;
   "test2">:: test2;
+  "eval1">:: eval1;
+  "eval2">:: eval2;
   "list_map_append_test">:: list_map_append_test;
   "repeat_test">:: repeat_test;
   "repeat_zero_test">:: repeat_zero_test;

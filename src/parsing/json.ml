@@ -1,3 +1,5 @@
+
+
 type regex = [
   | `Concat of regex * regex
   | `Group of regex
@@ -27,15 +29,14 @@ type transition =
   epsilon
   char
   wildcard
-;;
+
 *)
 
 type nfa = {
   edges: (int * char option) list IntMap.t;
   source: int;
   sink: int;
-  finals: int list;
-};;
+}
 
 let list_map_union = IntMap.merge (fun key a b ->
   match a, b with
@@ -43,7 +44,7 @@ let list_map_union = IntMap.merge (fun key a b ->
   | Some a, None -> Some a
   | None, Some b -> Some b
   | None, None -> None
-);;
+)
 
 let list_map_append k v m =
   let value_to_insert =
@@ -51,14 +52,14 @@ let list_map_append k v m =
   | Some existing -> existing @ v
   | None -> v in
   let m = IntMap.remove k m in
-  IntMap.add k value_to_insert m;;
+  IntMap.add k value_to_insert m
 
 
 (* let list_map_append x m = IntMap.update x (fun value ->
   match value with
   | Some existing -> existing @ x
   | None -> Some x
-) m;; *)
+) m *)
 
 let rec regex_to_nfa r =
   let i = ref 0 in
@@ -70,7 +71,7 @@ let rec regex_to_nfa r =
     let sink = next_i () in
     let edges = IntMap.empty in
     let edges = list_map_append source [(sink, Some c)] edges in
-    { edges; source; sink; finals = [] }
+    { edges; source; sink }
   | `Alternation (r1, r2) ->
     let source = next_i () in
     let sink = next_i () in
@@ -80,7 +81,7 @@ let rec regex_to_nfa r =
     let edges = list_map_append source [(nfa1.source, None); (nfa2.source, None)] edges in
     let edges = list_map_append nfa1.sink [(sink, None)] edges in
     let edges = list_map_append nfa2.sink [(sink, None)] edges in
-    { edges; source; sink; finals = [] }
+    { edges; source; sink }
   | `Group r -> r_to_n r (* TODO submatch extraction *)
   | `Repetition r ->
     let source = next_i () in
@@ -90,7 +91,7 @@ let rec regex_to_nfa r =
     let edges = list_map_append source [(nfa1.source, None)] edges in
     let edges = list_map_append nfa1.sink [(sink, None)] edges in
     let edges = list_map_append sink [(source, None)] edges in
-    { edges; source; sink; finals = [] }
+    { edges; source; sink }
   | `Concat (r1, r2) ->
     let source = next_i () in
     let sink = next_i () in
@@ -100,40 +101,39 @@ let rec regex_to_nfa r =
     let edges = list_map_append source [(nfa1.source, None)] edges in
     let edges = list_map_append nfa1.sink [(nfa2.source, None)] edges in
     let edges = list_map_append nfa2.sink [(sink, None)] edges in
-    { edges; source; sink; finals = [] }
+    { edges; source; sink }
   | `Wildcard   ->
     let source = next_i () in
     let sink = next_i () in
     let edges = IntMap.empty in
     let edges = list_map_append source [(sink, Some '.')] edges in (* TODO actually represent wildcard transitions *)
-    { edges; source; sink; finals = [] }
+    { edges; source; sink }
   | `Empty      ->
     let source = next_i () in
     let sink = next_i () in
     let edges = IntMap.empty in
     let edges = list_map_append source [(sink, None)] edges in
-    { edges; source; sink; finals = [] }
-  | _ -> raise (Invalid_argument "not implemented") in
-  r_to_n r;;
+    { edges; source; sink }
+  | _ -> raise (Invalid_argument "not implemented") in (*TODO remove *)
+  r_to_n r
+
+(* TODO Figure out where imports go properly *)
+open Core
+open Out_channel
 
 (* TODO mark source and sink on graph *)
-let rec nfa_to_dot {edges; source; sink; finals} =
+let rec nfa_to_dot {edges; source; sink } =
   "digraph G {\n" ^ IntMap.fold (fun k vs result ->
     result ^ (
-      List.fold_left (fun output (v, label) ->
+      List.fold_left vs ~init:"" ~f:(fun output (v, label) ->
         output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
           match label with
           | Some label_char -> String.make 1 label_char
           | None -> "None"
         )
-      ) "" vs
+      )
     )
   ) edges "" ^ "}"
-
-
-(* part 1 *)
-open Core
-open Out_channel
 
 let repeat s n =
   let rec rep output i =
@@ -194,6 +194,79 @@ let rec output_value outc = function
   | `Bool false -> output_string outc "false"
   | `Null       -> output_string outc "null"
 
+  and print_assoc outc obj =
+    output_string outc "{ ";
+    let sep = ref "" in
+    List.iter ~f:(fun (key, value) ->
+        printf "%s\"%s\": %a" !sep key output_value value;
+        sep := ",\n  ") obj;
+    output_string outc " }"
+
+  and print_list outc arr =
+    output_string outc "[";
+    List.iteri ~f:(fun i v ->
+        if i > 0 then
+          output_string outc ", ";
+        output_value outc v) arr;
+    output_string outc "]"
+
+
+let explode s =
+  let rec expl i l =
+    match i with
+    | -1 -> l
+    |  x -> expl (i - 1) (s.[i] :: l) in
+  expl (String.length s - 1) []
+
+(* https://gist.github.com/23Skidoo/1664038 *)
+let sort_and_remove_duplicates l =
+  let sl = List.sort compare l in
+  let rec go l acc = match l with
+    | [] -> List.rev acc
+    | [x] -> List.rev (x::acc)
+    | (x1::x2::xs) ->
+      if x1 = x2
+      then go (x2::xs) acc
+      else go (x2::xs) (x1::acc)
+in go sl []
+
+
+(* let follow_transition (next, c_opt) =
+  match c_opt with
+  | Some transition_c -> if c = transition_c then Some next else None
+  (* TODO be careful of epsilon transitions *)
+  | None -> step c next edges *)
+
+(* let rec step c finger edges =
+  match IntMap.find_opt finger edges with
+  | Some transitions -> (List.fold_left (fun output transition -> (follow_transition transition) @ output)
+    []
+    transitions)
+  | None -> [] *)
+
+let rec step (c:char) (finger:int) edges : int list =
+  match (IntMap.find_opt finger edges) with
+  | None -> []
+  | Some transitions ->
+    (List.fold_left transitions ~init:[] ~f:(fun output transition ->
+      (follow_transition transition c edges) @ output
+    ))
+and follow_transition ((next:int), (c_opt: char option)) (c:char) edges : int list =
+  match c_opt with
+  | Some transition_c -> if transition_c = c then [next] else []
+  | None -> step c next edges
+
+let eval s {edges; source; sink} =
+  let rec eval_recurse s_parts fingers =
+  match s_parts with
+  | [] -> List.exists fingers (fun finger -> finger = sink)
+  | c::rest -> eval_recurse rest (List.fold_left fingers ~init:[] ~f:(fun output finger ->
+    (step c finger edges) @ output
+  ))
+  in
+  eval_recurse (explode s) [source]
+
+
 (* output_string outc "regex/"; print_regex outc r; output_string outc "/" *)
 
 (* let eval s r =
@@ -235,20 +308,3 @@ let rec output_value outc = function
   | `Char c     -> printf "%c" c
   | `Empty      -> output_string outc " rempty! " in
   eval_seq (explode s) r *)
-
-
-and print_assoc outc obj =
-  output_string outc "{ ";
-  let sep = ref "" in
-  List.iter ~f:(fun (key, value) ->
-      printf "%s\"%s\": %a" !sep key output_value value;
-      sep := ",\n  ") obj;
-  output_string outc " }"
-
-and print_list outc arr =
-  output_string outc "[";
-  List.iteri ~f:(fun i v ->
-      if i > 0 then
-        output_string outc ", ";
-      output_value outc v) arr;
-  output_string outc "]"
