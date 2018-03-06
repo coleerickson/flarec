@@ -13,3 +13,4 @@ March 5:
 * Complete parsing with question marks
 * Flesh out test suite
 * Write a graphviz loop (bucklescript or webbrowser)
+* Rename start/final
