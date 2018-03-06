@@ -1,6 +1,6 @@
 open OUnit
 open Json
-open Test;;
+open Test
 
 let test1 test_ctxt = assert_equal "x" "x";;
 
@@ -59,8 +59,20 @@ let eval_alternation test_ctxt =
   assert_equal false (eval "c" nfa);
   assert_equal false (eval "" nfa)
 
-let match_regex_test test_ctxt =
+let parse_match_test test_ctxt =
   assert_equal true (match_regex "/ab*/" "abbb")
+
+let parse_match_question_mark_test test_ctxt =
+  assert_equal true (match_regex "/ab?/" "ab");
+  assert_equal true (match_regex "/ab?/" "a");
+  assert_equal false (match_regex "/ab?/" "abb")
+
+
+let parse_match_big_test test_ctxt =
+  assert_equal true (match_regex "/abc(hi|hey|hello)*ab*c/" "abchellohiheyheyabbbc");
+  assert_equal false (match_regex "/abc(hi|hey|hello)*ab*c/" "abchellohiheyeheyabbbc");
+  assert_equal false (match_regex "/abc(hi|hey|hello)*ab*c/" "abc");
+  assert_equal true (match_regex "/abc(hi|hey|hello)*ab*c/" "abcabc")
 
 (* Name the test cases and group them together *)
 let suite =
@@ -75,7 +87,9 @@ let suite =
   "eval_wildcard">:: eval_wildcard;
   "eval_repetition">:: eval_repetition;
   "eval_alternation">:: eval_alternation;
-  "match_regex_test">:: match_regex_test;
+  "parse_match_test">:: parse_match_test;
+  "parse_match_question_mark_test">:: parse_match_question_mark_test;
+  "parse_match_big_test">:: parse_match_big_test;
   "list_map_append_test">:: list_map_append_test;
   "repeat_test">:: repeat_test;
   "repeat_zero_test">:: repeat_zero_test;

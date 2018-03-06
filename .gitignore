@@ -7,3 +7,4 @@ _build
 out.txt
 *.dot
 *~
+*.png

@@ -50,6 +50,19 @@ let list_map_append k v m =
   let m = IntMap.remove k m in
   IntMap.add k value_to_insert m
 
+let merge_nodes a b {edges; start; final} =
+  let edges = match IntMap.find_opt b edges with
+  | Some b_nexts -> list_map_append a b_nexts edges
+  | None -> edges in
+  let edges = match IntMap.find_opt a edges with
+  | Some a_nexts -> IntMap.add a (List.filter (fun (a_next, tr) -> a_next != b) a_nexts ) (IntMap.remove a edges)
+  | None -> edges in
+  let edges = IntMap.map (List.map (fun (v, tr) -> ((if v = b then a else v), tr))) edges in
+  let edges = IntMap.remove b edges in
+  let final = if b = final then a else final in
+  let start = if b = start then a else start in
+  {edges; start; final}
+
 let rec regex_to_nfa r =
   let i = ref 0 in
   let next_i = fun () -> i := !i + 1; !i - 1 in
@@ -70,22 +83,19 @@ let rec regex_to_nfa r =
     let edges = list_map_append start [(nfa1.start, `Epsilon); (nfa2.start, `Epsilon)] edges in
     let edges = list_map_append nfa1.final [(final, `Epsilon)] edges in
     let edges = list_map_append nfa2.final [(final, `Epsilon)] edges in
-    { edges; start; final }
+    let {edges; start; final} = merge_nodes nfa1.final final {edges; start; final} in
+    let {edges; start; final} = merge_nodes nfa2.final final {edges; start; final} in
+    {edges; start; final}
   | `Group r -> r_to_n r (* TODO submatch extraction *)
   | `Repetition r ->
     let {edges; start; final} = r_to_n r in
     let edges = list_map_append final [(start, `Epsilon)] edges in
     { edges; start; final=start }
   | `Concat (r1, r2) ->
-    let start = next_i () in
-    let final = next_i () in
     let nfa1 = r_to_n r1 in
     let nfa2 = r_to_n r2 in
     let edges = list_map_union nfa1.edges nfa2.edges in
-    let edges = list_map_append start [(nfa1.start, `Epsilon)] edges in
-    let edges = list_map_append nfa1.final [(nfa2.start, `Epsilon)] edges in
-    let edges = list_map_append nfa2.final [(final, `Epsilon)] edges in
-    { edges; start; final }
+    merge_nodes nfa1.final nfa2.start { edges; start=nfa1.start; final=nfa2.final }
   | `Wildcard   ->
     let start = next_i () in
     let final = next_i () in
@@ -112,7 +122,7 @@ let rec nfa_to_dot {edges; start; final } =
     IntMap.fold (fun k vs result ->
     result ^ (
       List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
-        output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
+        output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
           match transition with
           | `Value transition_char -> String.make 1 transition_char
           | `Epsilon -> "epsilon"
@@ -136,7 +146,7 @@ let rec nfa_fingers_to_dot {edges; start; final} fingers =
     IntMap.fold (fun k vs result ->
     result ^ (
       List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
-        output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
+        output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
           match transition with
           | `Value transition_char -> String.make 1 transition_char
           | `Epsilon -> "epsilon"
