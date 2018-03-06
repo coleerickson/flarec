@@ -35,10 +35,3 @@ let loop filename () =
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
   parse_and_print lexbuf;
   In_channel.close inx
-(* 
-(* part 2 *)
-let () =
-  Command.basic ~summary:"Parse and display JSON"
-    Command.Spec.(empty +> anon ("filename" %: file))
-    loop
-  |> Command.run *)
