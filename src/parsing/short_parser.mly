@@ -18,6 +18,7 @@
 %token STAR
 %token OR_PIPE
 %token PERIOD
+%token QUESTION_MARK
 
 %start <Json.value option> prog
 
@@ -60,6 +61,7 @@ simple:
 
 basic:
   | r = elementary; STAR                 { `Repetition r }
+  | r = elementary; QUESTION_MARK        { `Alternation (r, `Empty) }
   | r = elementary                       { r }
   ;
 

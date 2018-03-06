@@ -1,6 +1,7 @@
 open Core
 open Lexer
 open Lexing
+open Json
 
 let print_position outx lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -16,13 +17,18 @@ let parse_with_error lexbuf =
     fprintf stderr "%a: syntax error\n" print_position lexbuf;
     exit (-1)
 
-(* part 1 *)
 let rec parse_and_print lexbuf =
   match parse_with_error lexbuf with
   | Some value ->
     printf "%a\n" Json.output_value value;
     parse_and_print lexbuf
   | None -> ()
+
+
+let match_regex regex_s s =
+  match parse_with_error (Lexing.from_string regex_s) with
+  | Some (`Regex r) -> eval s (regex_to_nfa r)
+  | _ -> raise (Invalid_argument "Failed to parse regex")
 
 let loop filename () =
   let inx = In_channel.create filename in
@@ -32,8 +38,8 @@ let loop filename () =
   In_channel.close inx
 
 (* part 2 *)
-let () =
+(* let () =
   Command.basic ~summary:"Parse and display JSON"
     Command.Spec.(empty +> anon ("filename" %: file))
     loop
-  |> Command.run
+  |> Command.run *)

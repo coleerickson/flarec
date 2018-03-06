@@ -50,6 +50,7 @@ rule read =
   | '*'      { STAR }
   | '|'      { OR_PIPE }
   | '.'      { PERIOD }
+  | '?'      { QUESTION_MARK }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof      { EOF }
 

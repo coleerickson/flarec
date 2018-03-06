@@ -1,6 +1,6 @@
-open OUnit;;
-open Json;;
-
+open OUnit
+open Json
+open Test;;
 
 let test1 test_ctxt = assert_equal "x" "x";;
 
@@ -59,6 +59,8 @@ let eval_alternation test_ctxt =
   assert_equal false (eval "c" nfa);
   assert_equal false (eval "" nfa)
 
+let match_regex_test test_ctxt =
+  assert_equal true (match_regex "/ab*/" "abbb")
 
 (* Name the test cases and group them together *)
 let suite =
@@ -73,6 +75,7 @@ let suite =
   "eval_wildcard">:: eval_wildcard;
   "eval_repetition">:: eval_repetition;
   "eval_alternation">:: eval_alternation;
+  "match_regex_test">:: match_regex_test;
   "list_map_append_test">:: list_map_append_test;
   "repeat_test">:: repeat_test;
   "repeat_zero_test">:: repeat_zero_test;
