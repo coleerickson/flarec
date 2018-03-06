@@ -1,5 +1,3 @@
-
-
 type regex = [
   | `Concat of regex * regex
   | `Group of regex
@@ -24,16 +22,14 @@ type value = [
 (* https://stackoverflow.com/a/10132568 *)
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
-(* TODO
-type transition =
-  epsilon
-  char
-  wildcard
-
-*)
+type transition = [
+  | `Epsilon
+  | `Value of char
+  | `Any
+]
 
 type nfa = {
-  edges: (int * char option) list IntMap.t;
+  edges: (int * transition) list IntMap.t;
   start: int;
   final: int;
 }
@@ -63,7 +59,7 @@ let rec regex_to_nfa r =
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, Some c)] edges in
+    let edges = list_map_append start [(final, `Value c)] edges in
     { edges; start; final }
   | `Alternation (r1, r2) ->
     let start = next_i () in
@@ -71,14 +67,14 @@ let rec regex_to_nfa r =
     let nfa1 = r_to_n r1 in
     let nfa2 = r_to_n r2 in
     let edges = list_map_union nfa1.edges nfa2.edges in
-    let edges = list_map_append start [(nfa1.start, None); (nfa2.start, None)] edges in
-    let edges = list_map_append nfa1.final [(final, None)] edges in
-    let edges = list_map_append nfa2.final [(final, None)] edges in
+    let edges = list_map_append start [(nfa1.start, `Epsilon); (nfa2.start, `Epsilon)] edges in
+    let edges = list_map_append nfa1.final [(final, `Epsilon)] edges in
+    let edges = list_map_append nfa2.final [(final, `Epsilon)] edges in
     { edges; start; final }
   | `Group r -> r_to_n r (* TODO submatch extraction *)
   | `Repetition r ->
     let {edges; start; final} = r_to_n r in
-    let edges = list_map_append final [(start, None)] edges in
+    let edges = list_map_append final [(start, `Epsilon)] edges in
     { edges; start; final=start }
   | `Concat (r1, r2) ->
     let start = next_i () in
@@ -86,21 +82,21 @@ let rec regex_to_nfa r =
     let nfa1 = r_to_n r1 in
     let nfa2 = r_to_n r2 in
     let edges = list_map_union nfa1.edges nfa2.edges in
-    let edges = list_map_append start [(nfa1.start, None)] edges in
-    let edges = list_map_append nfa1.final [(nfa2.start, None)] edges in
-    let edges = list_map_append nfa2.final [(final, None)] edges in
+    let edges = list_map_append start [(nfa1.start, `Epsilon)] edges in
+    let edges = list_map_append nfa1.final [(nfa2.start, `Epsilon)] edges in
+    let edges = list_map_append nfa2.final [(final, `Epsilon)] edges in
     { edges; start; final }
   | `Wildcard   ->
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, Some '.')] edges in (* TODO actually represent wildcard transitions *)
+    let edges = list_map_append start [(final, `Any)] edges in (* TODO actually represent wildcard transitions *)
     { edges; start; final }
   | `Empty      ->
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, None)] edges in
+    let edges = list_map_append start [(final, `Epsilon)] edges in
     { edges; start; final }
   | _ -> raise (Invalid_argument "not implemented") in (*TODO remove *)
   r_to_n r
@@ -115,11 +111,12 @@ let rec nfa_to_dot {edges; start; final } =
     Printf.sprintf "\"%d\" [peripheries=2]\n" final ^
     IntMap.fold (fun k vs result ->
     result ^ (
-      List.fold_left vs ~init:"" ~f:(fun output (v, label) ->
+      List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
         output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
-          match label with
-          | Some label_char -> String.make 1 label_char
-          | None -> "None"
+          match transition with
+          | `Value transition_char -> String.make 1 transition_char
+          | `Epsilon -> "epsilon"
+          | `Any -> ". (wildcard)"
         )
       )
     )
@@ -138,11 +135,12 @@ let rec nfa_fingers_to_dot {edges; start; final} fingers =
     ) ^
     IntMap.fold (fun k vs result ->
     result ^ (
-      List.fold_left vs ~init:"" ~f:(fun output (v, label) ->
+      List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
         output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=%s]\n" k v (
-          match label with
-          | Some label_char -> String.make 1 label_char
-          | None -> "None"
+          match transition with
+          | `Value transition_char -> String.make 1 transition_char
+          | `Epsilon -> "epsilon"
+          | `Any -> ". (wildcard)"
         )
       )
     )
@@ -255,10 +253,11 @@ let rec step c finger edges =
     (List.fold_left transitions ~init:[] ~f:(fun output transition ->
       (follow_transition transition c edges) @ output
     ))
-and follow_transition (next, c_opt) c edges : int list =
-  match c_opt with
-  | Some transition_c -> if transition_c = c then [next] else []
-  | None -> step c next edges
+and follow_transition (next, transition) c edges : int list =
+  match transition with
+  | `Value transition_char -> if transition_char = c then [next] else []
+  | `Any -> [next]
+  | `Epsilon -> step c next edges
 
 let rec is_final_reachable_by_epsilon fingers {edges; start; final} =
   List.exists fingers (fun finger -> finger = final) ||
@@ -267,10 +266,10 @@ let rec is_final_reachable_by_epsilon fingers {edges; start; final} =
     | None -> false
     | Some transitions -> is_final_reachable_by_epsilon
       (List.dedup (List.fold_left transitions ~init:[] ~f:(fun output (next, c) ->
-        if c = None then next::output else output
+        if c = `Epsilon then next::output else output
       )))
       {edges; start; final}
-  )
+  ) (*TODO make robust to cycles of epsilon transitions *)
 
 let num_nfas_written = ref 0
 

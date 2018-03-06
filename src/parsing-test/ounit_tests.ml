@@ -18,7 +18,7 @@ let list_map_append_test test_ctxt =
 
 let regex_to_nfa_test test_ctxt =
   let edges = IntMap.empty in
-  let edges = IntMap.add 0 [(1, Some 'a')] edges in
+  let edges = IntMap.add 0 [(1, `Value 'a')] edges in
   let desired = { edges; start = 0; final = 1 } in
   assert_equal desired (regex_to_nfa (`Char 'a'));;
 
@@ -37,13 +37,19 @@ let eval4 test_ctxt =
 let eval5 test_ctxt =
   assert_equal false (eval "a" (regex_to_nfa (`Concat (`Char 'a', `Char 'b')) ))
 
+let eval_wildcard test_ctxt =
+  let nfa = regex_to_nfa `Wildcard in
+  assert_equal false (eval "" nfa);
+  assert_equal true (eval " " nfa);
+  assert_equal true (eval "a" nfa);
+  assert_equal false (eval "aa" nfa)
+
 let eval_repetition test_ctxt =
   let nfa = regex_to_nfa (`Repetition (`Char 'a')) in
   assert_equal true (eval "" nfa);
   assert_equal true (eval "a" nfa);
   assert_equal true (eval "aaaaaaa" nfa);
   assert_equal false (eval "c" nfa)
-
 
 let eval_alternation test_ctxt =
   let nfa = regex_to_nfa (`Alternation (`Char 'a', `Char 'b')) in
@@ -64,6 +70,7 @@ let suite =
   "eval3">:: eval3;
   "eval4">:: eval4;
   "eval5">:: eval5;
+  "eval_wildcard">:: eval_wildcard;
   "eval_repetition">:: eval_repetition;
   "eval_alternation">:: eval_alternation;
   "list_map_append_test">:: list_map_append_test;
