@@ -1,7 +1,8 @@
 # flarec (in development)
 
-Run `build_bin.sh` in `src/parsing-test`. This generates `main.native`. Then try:
+To try out regex matching, run
 
 ```sh
-$ ./main.native /ab*/ abbbbb
+$ make
+$ bin/matchRegex.exe "/ab*/" abbbbb
 ```
