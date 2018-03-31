@@ -20,7 +20,7 @@
 %token PERIOD
 %token QUESTION_MARK
 
-%start <Json.value option> prog
+%start <Regex.value option> prog
 
 %%
 prog:

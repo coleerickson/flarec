@@ -1,3 +1,7 @@
+(* type flarex = [
+
+] *)
+
 type regex = [
   | `Concat of regex * regex
   | `Group of regex
@@ -19,8 +23,18 @@ type value = [
   | `String of string
 ]
 
+
+(* TODO *)
+(*
+  let from_list = List.fold_left ~init:Map.empty ~f:(fun acc (k, v) ->
+    Map.add k v acc
+  ) *)
+
+
 (* https://stackoverflow.com/a/10132568 *)
 module IntMap = Map.Make(struct type t = int let compare = compare end)
+
+module IntListMap = Map.Make(struct type t = int list let compare = compare end)
 
 type transition = [
   | `Epsilon
@@ -111,6 +125,46 @@ let rec regex_to_nfa r =
   | _ -> raise (Invalid_argument "not implemented") in (*TODO remove *)
   r_to_n r
 
+
+
+(* let all_nodes {edges; start; final} =
+  List.dedup (IntMap.fold (fun k vs result ->
+    k::(List.map vs (fun (v, c) -> v)) @ result
+  ) edges [start; final]) *)
+
+(* https://stackoverflow.com/a/40143586 *)
+let rec powerset = function
+  | [] -> [[]]
+  | x :: xs ->
+     let ps = powerset xs in
+     ps @ List.map (fun ss -> x :: ss) ps
+
+
+
+(* let nfa_to_dfa {edges; start; final} =
+  let node_powerset = powerset (all_nodes {edges; start; final}) in
+  (* For every set in the powerset, create a node and compute transitions *)
+  List.fold_left node_powerset ~init:IntListMap.empty ~f:(fun output node_set ->
+    output |> IntListMap.add node_set (
+      (* For every node within the set, find its transition nodes *)
+      node_set |> List.fold_left ~init:[] ~f:(fun output node ->
+        match IntMap.find_opt node edges with
+        | Some transitions -> transitions |> List.
+        | None -> output
+      )
+    )
+  ) *)
+  (* IntMap.fold_left (fun k vs output_dfa ->
+    List.fold_left vs ~init:output_dfa ~f:(fun output (v, transition) ->
+      IntPairMap.add (k, v) Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
+        match transition with
+        | `Value transition_char -> String.make 1 transition_char
+        | `Epsilon -> "epsilon"
+        | `Any -> ". (wildcard)"
+      )
+    )
+  ) edges *)
+
 (* TODO Figure out where imports go properly *)
 open Core
 open Out_channel
@@ -131,11 +185,6 @@ let rec nfa_to_dot {edges; start; final } =
       )
     )
   ) edges "" ^ "}"
-
-let all_nodes {edges; start; final} =
-  List.dedup (IntMap.fold (fun k vs result ->
-    k::(List.map vs (fun (v, c) -> v)) @ result
-  ) edges [start; final])
 
 let rec nfa_fingers_to_dot {edges; start; final} fingers =
   "digraph G {\n" ^
@@ -200,8 +249,6 @@ let regex_to_s r =
   | `Empty      ->
     (repeat "  " indent) ^ "(empty)\n" in
   r_to_s 0 r
-
-  (* | _ -> (repeat "hey" 0) *)
 
 let rec output_value outc = function
   | `Regex r    -> printf "%s" (nfa_to_dot (regex_to_nfa r))
@@ -296,4 +343,52 @@ let eval s {edges; start; final} =
     | c::rest -> eval_recurse rest (List.fold_left fingers ~init:[] ~f:(fun output finger ->
       (step c finger edges) @ output
     )) (x + 1) in
-  eval_recurse (explode s) [start] 0
+  eval_recurse (explode s) [start] 0;;
+
+open Llvm
+
+let context = global_context ()
+let the_module = create_module context "regex matcher"
+let builder = builder context
+let int_type = i32_type context
+
+(* let codegen s {edges; start; final} =
+  let blocks = IntMap.map (fun vs -> List.map (fun v, transition ->
+    match transition with
+    | `Value transition_char -> String.make 1 transition_char
+    | `Epsilon -> "epsilon"
+    | `Any -> ". (wildcard)"
+  ))
+
+  IntMap.fold (fun k vs ->
+    build_label
+    List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
+      output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
+        match transition with
+        | `Value transition_char -> String.make 1 transition_char
+        | `Epsilon -> "epsilon"
+        | `Any -> ". (wildcard)"
+      )
+    )
+  ) edges "" *)
+
+let codegen_func =
+  let args_types = Array.create 0 int_type in
+  let f_type = function_type int_type args_types in
+  let f = declare_function "matchplease" f_type the_module in
+  let block = append_block context "entry" f in
+  position_at_end block builder;
+  let ret_val = const_int int_type 1337 in
+  build_ret ret_val builder;
+  let main_f = declare_function "main" f_type the_module in
+  let main_block = append_block context "mainblock" main_f in
+  position_at_end main_block builder;
+  let call = build_call f (Array.create 0 (const_int int_type 42)) "calltmp" builder in
+  build_ret call builder;
+
+  (* Llvm_analysis.assert_valid_function f; *)
+  let result = string_of_llmodule the_module in
+  Printf.printf "%s\n" result;
+  let oc = open_out "a.ll" in
+  fprintf oc "%s\n" result;
+  close_out oc

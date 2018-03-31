@@ -1,0 +1,11 @@
+(jbuild_version 1)
+
+(menhir 
+    ; Though jbuilder insists that we add the "--infer" flag, doing so will
+    ; cause the build to fail. So don't add it.
+    ((flags (--explain))
+     (modules (parser))
+     ))
+
+(ocamllex (lexer))
+

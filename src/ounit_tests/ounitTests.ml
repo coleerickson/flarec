@@ -1,6 +1,6 @@
 open OUnit
-open Json
-open Test
+open Regex
+open MatchRegex
 
 let test1 test_ctxt = assert_equal "x" "x";;
 
@@ -73,6 +73,10 @@ let parse_match_big_test test_ctxt =
   assert_equal false (match_regex "/abc(hi|hey|hello)*ab*c/" "abchellohiheyeheyabbbc");
   assert_equal false (match_regex "/abc(hi|hey|hello)*ab*c/" "abc");
   assert_equal true (match_regex "/abc(hi|hey|hello)*ab*c/" "abcabc")
+
+let compile_test1 test_ctxt =
+  codegen_func;
+  assert_equal true true
 
 (* Name the test cases and group them together *)
 let suite =

@@ -1,7 +1,7 @@
 open Core
 open Lexer
 open Lexing
-open Json
+open Regex
 
 let print_position outx lexbuf =
   let pos = lexbuf.lex_curr_p in
@@ -20,7 +20,7 @@ let parse_with_error lexbuf =
 let parse_and_print lexbuf =
   match parse_with_error lexbuf with
   | Some value ->
-    printf "%a\n" Json.output_value value
+    printf "%a\n" Regex.output_value value
   | None -> ()
 
 
