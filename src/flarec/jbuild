@@ -1,9 +1,9 @@
 (jbuild_version 1)
 
-(copy_files# lib/*{.ml,.mli,.mll,.mly})
+(copy_files# flare/*{.ml,.mli,.mll,.mly})
 
 (executable
-    ((name matchRegex)
+    ((name flarec)
      (libraries (core llvm))
      ))
 

@@ -23,15 +23,19 @@ let parse_and_print lexbuf =
     printf "%a\n" Regex.output_value value
   | None -> ()
 
+let parse_file_and_print filename =
+  let inx = In_channel.create filename in
+  let lexbuf = Lexing.from_channel inx in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
+  parse_and_print lexbuf;
+  In_channel.close inx
 
 let match_regex regex_s s =
   match parse_with_error (Lexing.from_string regex_s) with
   | Some (`Regex r) -> eval s (regex_to_nfa r)
   | _ -> raise (Invalid_argument "Failed to parse regex")
 
-let loop filename () =
-  let inx = In_channel.create filename in
-  let lexbuf = Lexing.from_channel inx in
-  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = filename };
-  parse_and_print lexbuf;
-  In_channel.close inx
+let print_match_regex regex s =
+  Printf.printf "regex: %s\ns: %s\n" regex s;
+  Printf.printf "%s\n" (if match_regex regex s then "match" else "no match");
+  ()

@@ -5,9 +5,14 @@ clean:
 	rm -rf bin
 
 matchRegex:
-	jbuilder build src/ounit_tests/match_regex/matchRegex.exe && \
+	jbuilder build src/match_regex/matchRegex.exe && \
 	mkdir -p bin && \
-	cp _build/default/src/ounit_tests/match_regex/matchRegex.exe bin/matchRegex.exe 
+	cp _build/default/src/match_regex/matchRegex.exe bin/matchRegex.exe
+
+flarec:
+	jbuilder build src/flarec/flarec.exe && \
+	mkdir -p bin && \
+	cp _build/default/src/flarec/flarec.exe bin/flarec.exe
 
 test:
 	jbuilder build src/ounit_tests/ounitTests.exe && \

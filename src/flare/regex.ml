@@ -30,11 +30,27 @@ type value = [
     Map.add k v acc
   ) *)
 
+(*
+module Make = functor (Ord: Map.OrderedType) -> struct
+    module Map = Map.Make(Ord)
+        include Map
+      let add_extend k v m =
+          let value_to_insert =
+          match IntMap.find_opt k m with
+          | Some existing -> existing @ v
+          | None -> v in
+          let m = IntMap.remove k m in
+          IntMap.add k value_to_insert m
+end
+*)
 
 (* https://stackoverflow.com/a/10132568 *)
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
-module IntListMap = Map.Make(struct type t = int list let compare = compare end)
+type supernode = int list
+module IntListMap = Map.Make(struct type t = supernode let compare = compare end)
+
+module StringMap = Map.Make(struct type t = string let compare = compare end)
 
 type transition = [
   | `Epsilon
@@ -48,6 +64,13 @@ type nfa = {
   final: int;
 }
 
+type dfa = {
+  edges: (supernode * transition) list IntListMap.t;
+  start: supernode;
+  finals: supernode list;
+}
+
+
 let list_map_union = IntMap.merge (fun key a b ->
   match a, b with
   | Some a, Some b -> Some (a @ b)
@@ -56,7 +79,8 @@ let list_map_union = IntMap.merge (fun key a b ->
   | None, None -> None
 )
 
-let list_map_append k v m =
+
+let intmap_add_extend k v m =
   let value_to_insert =
   match IntMap.find_opt k m with
   | Some existing -> existing @ v
@@ -64,9 +88,17 @@ let list_map_append k v m =
   let m = IntMap.remove k m in
   IntMap.add k value_to_insert m
 
+let intlistmap_add_extend k v m =
+  let value_to_insert =
+  match IntListMap.find_opt k m with
+  | Some existing -> existing @ v
+  | None -> v in
+  let m = IntListMap.remove k m in
+  IntListMap.add k value_to_insert m
+
 let merge_nodes a b {edges; start; final} =
   let edges = match IntMap.find_opt b edges with
-  | Some b_nexts -> list_map_append a b_nexts edges
+  | Some b_nexts -> intmap_add_extend a b_nexts edges
   | None -> edges in
   let edges = match IntMap.find_opt a edges with
   | Some a_nexts -> IntMap.add a (List.filter (fun (a_next, tr) -> a_next != b) a_nexts ) (IntMap.remove a edges)
@@ -86,7 +118,7 @@ let rec regex_to_nfa r =
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, `Value c)] edges in
+    let edges = intmap_add_extend start [(final, `Value c)] edges in
     { edges; start; final }
   | `Alternation (r1, r2) ->
     let start = next_i () in
@@ -94,16 +126,16 @@ let rec regex_to_nfa r =
     let nfa1 = r_to_n r1 in
     let nfa2 = r_to_n r2 in
     let edges = list_map_union nfa1.edges nfa2.edges in
-    let edges = list_map_append start [(nfa1.start, `Epsilon); (nfa2.start, `Epsilon)] edges in
-    let edges = list_map_append nfa1.final [(final, `Epsilon)] edges in
-    let edges = list_map_append nfa2.final [(final, `Epsilon)] edges in
+    let edges = intmap_add_extend start [(nfa1.start, `Epsilon); (nfa2.start, `Epsilon)] edges in
+    let edges = intmap_add_extend nfa1.final [(final, `Epsilon)] edges in
+    let edges = intmap_add_extend nfa2.final [(final, `Epsilon)] edges in
     let {edges; start; final} = merge_nodes nfa1.final final {edges; start; final} in
     let {edges; start; final} = merge_nodes nfa2.final final {edges; start; final} in
     {edges; start; final}
   | `Group r -> r_to_n r (* TODO submatch extraction *)
   | `Repetition r ->
     let {edges; start; final} = r_to_n r in
-    let edges = list_map_append final [(start, `Epsilon)] edges in
+    let edges = intmap_add_extend final [(start, `Epsilon)] edges in
     { edges; start; final=start }
   | `Concat (r1, r2) ->
     let nfa1 = r_to_n r1 in
@@ -114,13 +146,13 @@ let rec regex_to_nfa r =
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, `Any)] edges in (* TODO actually represent wildcard transitions *)
+    let edges = intmap_add_extend start [(final, `Any)] edges in (* TODO actually represent wildcard transitions *)
     { edges; start; final }
   | `Empty      ->
     let start = next_i () in
     let final = next_i () in
     let edges = IntMap.empty in
-    let edges = list_map_append start [(final, `Epsilon)] edges in
+    let edges = intmap_add_extend start [(final, `Epsilon)] edges in
     { edges; start; final }
   | _ -> raise (Invalid_argument "not implemented") in (*TODO remove *)
   r_to_n r
@@ -139,35 +171,9 @@ let rec powerset = function
      let ps = powerset xs in
      ps @ List.map (fun ss -> x :: ss) ps
 
-
-
-(* let nfa_to_dfa {edges; start; final} =
-  let node_powerset = powerset (all_nodes {edges; start; final}) in
-  (* For every set in the powerset, create a node and compute transitions *)
-  List.fold_left node_powerset ~init:IntListMap.empty ~f:(fun output node_set ->
-    output |> IntListMap.add node_set (
-      (* For every node within the set, find its transition nodes *)
-      node_set |> List.fold_left ~init:[] ~f:(fun output node ->
-        match IntMap.find_opt node edges with
-        | Some transitions -> transitions |> List.
-        | None -> output
-      )
-    )
-  ) *)
-  (* IntMap.fold_left (fun k vs output_dfa ->
-    List.fold_left vs ~init:output_dfa ~f:(fun output (v, transition) ->
-      IntPairMap.add (k, v) Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
-        match transition with
-        | `Value transition_char -> String.make 1 transition_char
-        | `Epsilon -> "epsilon"
-        | `Any -> ". (wildcard)"
-      )
-    )
-  ) edges *)
-
 (* TODO Figure out where imports go properly *)
 open Core
-open Out_channel
+(* open Out_channel *)
 
 (* TODO mark start and final on graph *)
 let rec nfa_to_dot {edges; start; final } =
@@ -328,13 +334,22 @@ let rec is_final_reachable_by_epsilon fingers {edges; start; final} =
       {edges; start; final}
   ) (*TODO make robust to cycles of epsilon transitions *)
 
+let eval s {edges; start; final} =
+  let rec eval_recurse s_chars fingers =
+    match s_chars with
+    | [] -> is_final_reachable_by_epsilon fingers {edges; start; final}
+    | c::rest -> eval_recurse rest (List.fold_left fingers ~init:[] ~f:(fun output finger ->
+      (step c finger edges) @ output
+    )) in
+  eval_recurse (explode s) [start];;
+
 let num_nfas_written = ref 0
 
 let output_nfa nfa fingers x =
   let path = sprintf "%d-%d-nfa.dot" !num_nfas_written x in
   save_nfa_to_file nfa fingers path
 
-let eval s {edges; start; final} =
+let eval_debug s {edges; start; final} =
   num_nfas_written := !num_nfas_written + 1;
   let rec eval_recurse s_chars fingers x =
     output_nfa {edges; start; final} fingers x;
@@ -345,50 +360,104 @@ let eval s {edges; start; final} =
     )) (x + 1) in
   eval_recurse (explode s) [start] 0;;
 
-open Llvm
 
-let context = global_context ()
-let the_module = create_module context "regex matcher"
-let builder = builder context
-let int_type = i32_type context
+(* Follow epsilon transitions from node x, returns a list of all the transitions to reachable nodes*)
+let rec epsilon_closure x edges = (* TODO make robust to epsilon-cycles *)
+ match IntMap.find_opt x edges with
+   | None -> [x]
+   | Some transitions -> x::(List.concat_map transitions (fun (next, c) -> 
+       if c = `Epsilon then epsilon_closure next edges else []
+     ))
 
-(* let codegen s {edges; start; final} =
-  let blocks = IntMap.map (fun vs -> List.map (fun v, transition ->
-    match transition with
-    | `Value transition_char -> String.make 1 transition_char
-    | `Epsilon -> "epsilon"
-    | `Any -> ". (wildcard)"
-  ))
 
-  IntMap.fold (fun k vs ->
-    build_label
-    List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
-      output ^ Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
+(* TODO use sets instead of lists *)
+(* NOTE just remember to stop when you reencounter a supernode *)
+(* let nfa_to_dfa {edges; start; final} =
+  let dfa_nodes = powerset (all_nodes {edges; start; final}) in (* TODO sort *)
+  (* For every set in the powerset, create a node and compute transitions *)
+  List.fold_left dfa_nodes ~init:IntListMap.empty ~f:(fun output node_set ->
+    output |> IntListMap.add dfa_node_set (
+      (* For every node within the set, find its transition nodes *)
+      dfa_node_set |> List.fold_left ~init:[] ~f:(fun output node ->
+          step node 
+        match IntMap.find_opt node edges with
+        | Some transitions -> transitions |> List.map ~f:(fun (_, _) -> )
+        (* If one of the nodes transitions to nothing, then just continue *) 
+        | None -> output
+      )
+    )
+  ) *)
+
+(* Takes a list and returns a list of lists, where the contained lists group consecutive elements of l that have the same value when f is applied to them *)
+let group_list ~f l =
+  match l with
+  | [] -> []
+  | x::rest -> List.fold_left rest ~init:[(f x, [x])] ~f:(fun ((fprev, group)::old) next ->
+      let fnext = f next in
+      if fnext = fprev then (fprev, next::group)::old else (fnext, [next])::(fprev, group)::old)
+
+
+let compare_second (_, a) (_, b) = compare a b;;
+let second_equal (_, a) (_, b) = a = b;;
+let group_by ~f l = l
+    |> List.sort ~cmp:(fun a b -> compare (f a) (f b))
+    |> group_list ~f:f
+
+let nfa_to_dfa {edges; start; final} = 
+  let rec n2d supernodes dfa =
+    match supernodes with
+    | [] -> dfa
+    | supernode::rest -> 
+      if IntListMap.mem supernode dfa then
+        (* Don't repeat if the supernode has already been added to the DFA *)
+        n2d rest dfa
+      else
+        (* Ensure that we put this supernode in the DFA as a key so that we don't recheck it*)
+        let dfa = intlistmap_add_extend supernode [] dfa in
+        (* Create an alias since the supernode is a list of the nodes from its originating NFA *)
+        let subnodes = supernode in
+        (* Look up each subnode in the NFA to find the nodes it transitions to. *)
+        let transitions = subnodes
+                          |> List.concat_map ~f:(fun subnode -> IntMap.find_opt subnode edges
+                                                                |> Option.value ~default:[]) in
+        (* Group the transitions by their transition characters *)
+        let transition_groups = transitions |> group_by ~f:snd |> List.map ~f:(fun (group, vals) -> (group, List.map vals ~f:fst)) in
+        (* Separate out the wildcard ones since we have to handle them differently *)
+        let wildcard_destinations = transition_groups
+            |> List.find_map ~f:(fun (transition, destinations) ->
+                if transition = `Any then Some destinations else None)
+            |> Option.value ~default:[] in
+        (* Remove the wildcard group from the other transition groups *)
+        let transition_groups = List.filter ~f:(fun (transition, _) -> transition <> `Any) transition_groups in
+        (* We create one supernode for each transition character we can take, always carrying the wildcard transitions along *)
+        let next_supernodes = List.map transition_groups ~f:(fun (transition, nodes) ->
+            (transition, sort_and_remove_duplicates (
+                (* In order to create the supernode, we have to get the epsilon closure of each subnode *)
+                (List.concat_map ~f:(fun node -> epsilon_closure node edges) nodes) @ wildcard_destinations
+            ))
+        ) in
+        (* We then add these supernodes to the DFA *)
+        let dfa = List.fold_left next_supernodes ~init:dfa ~f:(fun dfa (transition, next_supernode) ->
+            intlistmap_add_extend supernode [(next_supernode, transition)] dfa) in
+        (* We now remove the transition information about the supernodes we transitioned to *)
+        let next_supernodes = List.map next_supernodes ~f:snd in
+        (* We also tack them onto the supernode queue for examination *)
+        let supernodes = next_supernodes @ rest in
+        n2d supernodes dfa in
+  let start_supernode = epsilon_closure start edges in
+  let superedges = n2d [start_supernode] IntListMap.empty in
+  let final_supernodes = (* TODO *) [] in 
+  {edges=superedges; start=start_supernode; finals=final_supernodes}
+
+  (* IntMap.fold_left (fun k vs output_dfa ->
+    List.fold_left vs ~init:output_dfa ~f:(fun output (v, transition) ->
+      IntPairMap.add (k, v) Printf.sprintf "\"%d\" -> \"%d\" [label=\"%s\"]\n" k v (
         match transition with
         | `Value transition_char -> String.make 1 transition_char
         | `Epsilon -> "epsilon"
         | `Any -> ". (wildcard)"
       )
     )
-  ) edges "" *)
+  ) edges *)
 
-let codegen_func =
-  let args_types = Array.create 0 int_type in
-  let f_type = function_type int_type args_types in
-  let f = declare_function "matchplease" f_type the_module in
-  let block = append_block context "entry" f in
-  position_at_end block builder;
-  let ret_val = const_int int_type 1337 in
-  build_ret ret_val builder;
-  let main_f = declare_function "main" f_type the_module in
-  let main_block = append_block context "mainblock" main_f in
-  position_at_end main_block builder;
-  let call = build_call f (Array.create 0 (const_int int_type 42)) "calltmp" builder in
-  build_ret call builder;
 
-  (* Llvm_analysis.assert_valid_function f; *)
-  let result = string_of_llmodule the_module in
-  Printf.printf "%s\n" result;
-  let oc = open_out "a.ll" in
-  fprintf oc "%s\n" result;
-  close_out oc

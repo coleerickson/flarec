@@ -1,6 +1,6 @@
 open OUnit
 open Regex
-open MatchRegex
+open ParseTools
 
 let test1 test_ctxt = assert_equal "x" "x";;
 
