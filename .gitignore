@@ -10,3 +10,8 @@ out.txt
 *.png
 *.merlin
 bin
+*.ll
+*.s
+*.bkp
+test.c
+ex.c

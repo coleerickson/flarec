@@ -1,0 +1,4 @@
+open Flare.Regex;;
+open Flare.ParseTools;;
+output_dfa (parse_regex_to_dfa_exn "/(Li...am|Ian) is (not)* my dad/") 1;;
+exit 0;;

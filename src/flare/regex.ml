@@ -159,11 +159,6 @@ let rec regex_to_nfa r =
 
 
 
-(* let all_nodes {edges; start; final} =
-  List.dedup (IntMap.fold (fun k vs result ->
-    k::(List.map vs (fun (v, c) -> v)) @ result
-  ) edges [start; final]) *)
-
 (* https://stackoverflow.com/a/40143586 *)
 let rec powerset = function
   | [] -> [[]]
@@ -191,6 +186,28 @@ let rec nfa_to_dot {edges; start; final } =
       )
     )
   ) edges "" ^ "}"
+
+let intlist_to_s l = Sexp.to_string (List.sexp_of_t Int.sexp_of_t l)
+
+let rec dfa_to_dot {edges; start; finals} =
+  "digraph G {\n" ^
+   (List.fold_left finals ~init:"" ~f:(fun output supernode ->
+      output ^ (Printf.sprintf "\"%s\" [peripheries=2]\n" (intlist_to_s supernode)) 
+    )) ^
+    (IntListMap.fold (fun k vs result ->
+      result ^ (
+        List.fold_left vs ~init:"" ~f:(fun output (v, transition) ->
+          output ^ Printf.sprintf "\"%s\" -> \"%s\" [label=\"%s\"]\n" (intlist_to_s k) (intlist_to_s v) (
+            match transition with
+            | `Value transition_char -> String.make 1 transition_char
+            | `Epsilon -> "epsilon"
+            | `Any -> ". (wildcard)"
+          )
+        )
+      )
+    ) edges "") ^
+    "}"
+
 
 let rec nfa_fingers_to_dot {edges; start; final} fingers =
   "digraph G {\n" ^
@@ -304,9 +321,9 @@ let sort_and_remove_duplicates l =
 in go sl []
 
 (* Adapted from https://ocaml.org/learn/tutorials/file_manipulation.html#Writing *)
-let save_nfa_to_file nfa fingers path =
+let save_s_to_file s path =
   let oc = open_out path in
-  fprintf oc "%s\n" (nfa_fingers_to_dot nfa fingers);
+  fprintf oc "%s\n" s;
   close_out oc
 
 let rec step c finger edges =
@@ -344,10 +361,14 @@ let eval s {edges; start; final} =
   eval_recurse (explode s) [start];;
 
 let num_nfas_written = ref 0
-
 let output_nfa nfa fingers x =
   let path = sprintf "%d-%d-nfa.dot" !num_nfas_written x in
-  save_nfa_to_file nfa fingers path
+  save_s_to_file (nfa_fingers_to_dot nfa fingers) path
+
+let num_dfas_written = ref 0
+let output_dfa d x =
+  let path = sprintf "%d-%d-dfa.dot" !num_dfas_written x in
+  save_s_to_file (dfa_to_dot d) path
 
 let eval_debug s {edges; start; final} =
   num_nfas_written := !num_nfas_written + 1;
@@ -362,7 +383,7 @@ let eval_debug s {edges; start; final} =
 
 
 (* Follow epsilon transitions from node x, returns a list of all the transitions to reachable nodes*)
-let rec epsilon_closure x edges = (* TODO make robust to epsilon-cycles *)
+let rec epsilon_closure x edges =
  match IntMap.find_opt x edges with
    | None -> [x]
    | Some transitions -> x::(List.concat_map transitions (fun (next, c) -> 
@@ -403,6 +424,18 @@ let group_by ~f l = l
     |> List.sort ~cmp:(fun a b -> compare (f a) (f b))
     |> group_list ~f:f
 
+let pluck_group desired_group keyed_groups =
+    keyed_groups
+    |> List.find_map ~f:(fun (group_id, group_vals) -> 
+        if group_id = desired_group then Some group_vals else None)
+    |> Option.value ~default:[]
+
+let all_supernodes edges =
+  List.dedup (IntListMap.fold (fun k vs result ->
+    k::(List.map vs (fun (v, c) -> v)) @ result
+    ) edges [])
+
+(* TODO ideally the conversion would remove character transitions that are redundant in the face of wildcard transitions *)
 let nfa_to_dfa {edges; start; final} = 
   let rec n2d supernodes dfa =
     match supernodes with
@@ -421,19 +454,19 @@ let nfa_to_dfa {edges; start; final} =
                           |> List.concat_map ~f:(fun subnode -> IntMap.find_opt subnode edges
                                                                 |> Option.value ~default:[]) in
         (* Group the transitions by their transition characters *)
-        let transition_groups = transitions |> group_by ~f:snd |> List.map ~f:(fun (group, vals) -> (group, List.map vals ~f:fst)) in
+        let transition_groups = transitions 
+                                |> group_by ~f:snd 
+                                |> List.map ~f:(fun (group, vals) -> (group, List.map vals ~f:fst)) in
         (* Separate out the wildcard ones since we have to handle them differently *)
-        let wildcard_destinations = transition_groups
-            |> List.find_map ~f:(fun (transition, destinations) ->
-                if transition = `Any then Some destinations else None)
-            |> Option.value ~default:[] in
+        let wildcard_destinations = pluck_group `Any transition_groups in
         (* Remove the wildcard group from the other transition groups *)
-        let transition_groups = List.filter ~f:(fun (transition, _) -> transition <> `Any) transition_groups in
+        let transition_groups = List.filter ~f:(fun (transition, _) -> 
+            transition <> `Epsilon) transition_groups in
         (* We create one supernode for each transition character we can take, always carrying the wildcard transitions along *)
         let next_supernodes = List.map transition_groups ~f:(fun (transition, nodes) ->
             (transition, sort_and_remove_duplicates (
                 (* In order to create the supernode, we have to get the epsilon closure of each subnode *)
-                (List.concat_map ~f:(fun node -> epsilon_closure node edges) nodes) @ wildcard_destinations
+                (List.concat_map ~f:(fun node -> epsilon_closure node edges) nodes)
             ))
         ) in
         (* We then add these supernodes to the DFA *)
@@ -446,7 +479,10 @@ let nfa_to_dfa {edges; start; final} =
         n2d supernodes dfa in
   let start_supernode = epsilon_closure start edges in
   let superedges = n2d [start_supernode] IntListMap.empty in
-  let final_supernodes = (* TODO *) [] in 
+  (* The final supernodes of the DFA are any supernodes that contain the final node of the NFA *)
+  let final_supernodes = List.filter ~f:(fun subnodes -> 
+      List.exists ~f:(fun subnode -> subnode = final) subnodes
+    ) (all_supernodes superedges) in 
   {edges=superedges; start=start_supernode; finals=final_supernodes}
 
   (* IntMap.fold_left (fun k vs output_dfa ->

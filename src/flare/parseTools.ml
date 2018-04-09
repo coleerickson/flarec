@@ -30,10 +30,17 @@ let parse_file_and_print filename =
   parse_and_print lexbuf;
   In_channel.close inx
 
-let match_regex regex_s s =
-  match parse_with_error (Lexing.from_string regex_s) with
-  | Some (`Regex r) -> eval s (regex_to_nfa r)
+let parse_regex_exn s = 
+  match (parse_with_error (Lexing.from_string s)) with
+  | Some (`Regex r) -> r
   | _ -> raise (Invalid_argument "Failed to parse regex")
+
+let parse_regex_to_nfa_exn s = regex_to_nfa (parse_regex_exn s) 
+  
+let match_regex regex_s s =
+    eval s (parse_regex_to_nfa_exn regex_s)
+
+let parse_regex_to_dfa_exn s = nfa_to_dfa (parse_regex_to_nfa_exn s)
 
 let print_match_regex regex s =
   Printf.printf "regex: %s\ns: %s\n" regex s;

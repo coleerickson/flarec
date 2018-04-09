@@ -1,5 +1,10 @@
 (jbuild_version 1)
 
+(library (
+    (name flare)
+    (libraries (core llvm))
+    ))
+
 (menhir 
     ; Though jbuilder insists that we add the "--infer" flag, doing so will
     ; cause the build to fail. So don't add it.

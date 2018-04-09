@@ -78,6 +78,9 @@ let compile_test1 test_ctxt =
   codegen_func;
   assert_equal true true
 
+let nfa_to_dfa_test test_ctxt =
+  assert_equal (* (nfa_to_dfa (regex_to_nfa (parse_with_error (Lexing.from_string  *)
+
 (* Name the test cases and group them together *)
 let suite =
 "suite">:::

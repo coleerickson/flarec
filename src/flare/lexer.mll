@@ -17,22 +17,17 @@ let int = '-'? ['0'-'9'] ['0'-'9']*
 
 (* part 2 *)
 let digit = ['0'-'9']
-let frac = '.' digit*
 let exp = ['e' 'E'] ['-' '+']? digit+
-let float = digit* frac? exp?
 
 (* part 3 *)
-let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
-let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_']
+let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_' ' '] (* Adapting for non-unicode will probably just involve expanding this character class *)
 
 (* part 4 *)
 rule read =
   parse
-  | white    { read lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
   | int      { INT (int_of_string (Lexing.lexeme lexbuf)) }
-  | float    { FLOAT (float_of_string (Lexing.lexeme lexbuf)) }
   | "true"   { TRUE }
   | "false"  { FALSE }
   | "null"   { NULL }
@@ -45,11 +40,11 @@ rule read =
   | ']'      { RIGHT_BRACK }
   | ':'      { COLON }
   | ','      { COMMA }
+  | '.'      { PERIOD }
   | lit_char { CHAR (Lexing.lexeme lexbuf).[0] }
   | '/'      { SLASH }
   | '*'      { STAR }
   | '|'      { OR_PIPE }
-  | '.'      { PERIOD }
   | '?'      { QUESTION_MARK }
   | _ { raise (SyntaxError ("Unexpected char: " ^ Lexing.lexeme lexbuf)) }
   | eof      { EOF }
