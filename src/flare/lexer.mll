@@ -21,7 +21,7 @@ let exp = ['e' 'E'] ['-' '+']? digit+
 
 (* part 3 *)
 let newline = '\r' | '\n' | "\r\n"
-let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_' ' '] (* Adapting for non-unicode will probably just involve expanding this character class *)
+let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_' ' ' ','] (* Adapting for non-unicode will probably just involve expanding this character class *)
 
 (* part 4 *)
 rule read =
