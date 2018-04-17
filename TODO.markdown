@@ -22,3 +22,12 @@ What I'm trying to get done on March 31:
 * (DFA minimization)
 * Assembly generation
 
+
+* Improve syntax error when parsing regex
+* Add character classes
+* Can a Kleene algebra with tests convert to an NFA (Kozen, Arjun Guha)
+
+April 16:
+* Read a CSV
+* Match regex against every cell in CSV
+* Parse Flare programs

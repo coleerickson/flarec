@@ -12,12 +12,6 @@ let next_line lexbuf =
     }
 }
 
-(* part 1 *)
-let int = '-'? ['0'-'9'] ['0'-'9']*
-
-(* part 2 *)
-let digit = ['0'-'9']
-let exp = ['e' 'E'] ['-' '+']? digit+
 
 (* part 3 *)
 let newline = '\r' | '\n' | "\r\n"
@@ -27,7 +21,6 @@ let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_' ' ' ','] (* Adapting for non-unicode
 rule read =
   parse
   | newline  { next_line lexbuf; read lexbuf }
-  | int      { INT (int_of_string (Lexing.lexeme lexbuf)) }
   | "true"   { TRUE }
   | "false"  { FALSE }
   | "null"   { NULL }

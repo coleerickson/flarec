@@ -39,34 +39,30 @@ let compile r =
 	(* Declare printf for debugging *)
 	let printf = declare_function "printf" (var_arg_function_type (i32_type context) (Array.of_list [ pointer_type (i8_type context) ])) the_module in
 
-	let args_types = Array.create 0 int_type in
-	let f_type = function_type int_type args_types in
-	let f = declare_function "matchplease" f_type the_module in
-	let block = append_block context "entry" f in
-	position_at_end block builder;
-	let ret_val = const_int int_type 1337 in
-	let _ = build_ret ret_val builder in
-	let main_f_type = function_type int_type (Array.of_list [ int_type; pointer_type (pointer_type (i8_type context)) ]) in
+	(* let main_f_type = function_type int_type (Array.of_list [ int_type; pointer_type (pointer_type (i8_type context)) ]) in
+  (* TODO rename to main if appropriate *)
 	let main_f = declare_function "main" main_f_type the_module in
 	let main_f_params = params main_f in
 	let argc = main_f_params.(0) in
 	let argv = main_f_params.(1) in
 	set_value_name "argc" argc;
-	set_value_name "argv" argv;
+	set_value_name "argv" argv; *)
 
-	let main_block = append_block context "mainblock" main_f in
+  let matchregex_f_type = function_type (i32_type context) (Array.of_list [ pointer_type (i8_type context) ]) in
+  let matchregex_f = declare_function "matchregex" matchregex_f_type the_module in
+  let matchregex_f_params = params matchregex_f in
+  let matchregex_input_ptr_param = matchregex_f_params.(0) in
+  set_value_name "matchregex_input_ptr_param" matchregex_input_ptr_param;
+
+	(* let main_block = append_block context "mainblock" main_f in
 	position_at_end main_block builder;
 
 	let x1 = build_alloca (i32_type context) "1" builder in
 	let x2 = build_alloca (pointer_type (pointer_type (i8_type context))) "2" builder in
   (* input_ptr is the string we're testing for a match against the DFA *)
   let input_ptr = build_alloca (pointer_type (i8_type context)) "input_ptr" builder in
-  (* This is a utility function for advancing our pointer into the string *)
-  let build_increment_input_ptr builder =
-		let input_ptr_value = build_load input_ptr "input_ptr_value" builder in
-		let incremented_ptr_value = build_in_bounds_gep input_ptr_value (Array.of_list [ (const_int (i64_type context) 1) ]) "incremented_ptr_value" builder in
-    build_store incremented_ptr_value input_ptr builder; in
 	let first_char = build_alloca (i8_type context) "first_char" builder in
+
 	let _ = build_store argc x1 builder in
 	let _ = build_store argv x2 builder in
 	let x3 = build_load x2 "3" builder in
@@ -74,49 +70,56 @@ let compile r =
 	let x5 = build_load x4 "5" builder in
 	let _ = build_store x5 input_ptr builder in
 
-  (* DEBUG Prints the first character of the input *)
-  let format_string = (build_global_string "%20s --'%c'->\n" "formatstring" builder) in
-	(* let x6 = build_load input_ptr "6" builder in
 
-	let x7 = build_in_bounds_gep x6 (Array.of_list [ (const_int (i64_type context) 0) ]) "7" builder in
-	let x8 = build_load x7 "8" builder in
-	let _ = build_store x8 first_char builder in
-	let first_char_loaded = build_load first_char "first_char_loaded" builder in
-	let x10 = build_sext first_char_loaded (i32_type context) "10" builder in
 
-	let format_string2 = const_in_bounds_gep format_string (Array.of_list [ const_int (i32_type context) 0; const_int (i32_type context) 0 ]) in
-	let x11 = build_call printf (Array.of_list [ format_string2; x10 ]) "11" builder in *)
+  let is_match = build_call matchregex_f (Array.of_list [ x5 ]) "is_match" builder in
+  let _ = build_ret is_match builder in *)
 
+  (* Start creating the body of matchregex *)
+  let matchregex_block = append_block context "matchregexblock" matchregex_f in
+  position_at_end matchregex_block builder;
+  let format_string = build_global_string "%20s --'%c'->\n" "formatstring" builder in
+
+  (* Start by storing the parameter *)
+  let matchregex_input_ptr = build_alloca (pointer_type (i8_type context)) "matchregex_input_ptr" builder in
+  let _ = build_store matchregex_input_ptr_param matchregex_input_ptr builder in
+
+  (* This is a utility function for advancing our pointer into the string *)
+  let build_increment_input_ptr builder =
+    let input_ptr_value = build_load matchregex_input_ptr "input_ptr_value" builder in
+    let incremented_ptr_value = build_in_bounds_gep input_ptr_value (Array.of_list [ (const_int (i64_type context) 1) ]) "incremented_ptr_value" builder in
+    build_store incremented_ptr_value matchregex_input_ptr builder; in
 
 	let {edges; start; finals} = d in
 	let node_block_map = List.fold_left (all_supernodes edges) ~init:IntListMap.empty ~f:(fun acc supernode ->
-		IntListMap.add supernode (append_block context (intlist_to_s supernode) main_f) acc
+		IntListMap.add supernode (append_block context (intlist_to_s supernode) matchregex_f) acc
 	) in
 
 	(* TODO entry point, index advancement *)
 	let _ = build_br (IntListMap.find start node_block_map) builder in
 
-	let fail_block = append_block context "fail-block" main_f in
+  (* Add a block for failures to the end, then return to the starting block for matchregex *)
+	let fail_block = append_block context "fail-block" matchregex_f in
 	position_at_end fail_block builder;
 	build_ret (const_int (i32_type context) 0) builder;
-	position_at_end main_block builder;
+	position_at_end matchregex_block builder;
 
 	IntListMap.iter (fun node block ->
 		(* Start by checking if we're done processing the string, in which case we'll just return whether or not this is an accepting state *)
 		position_at_end block builder;
 
     (* Retrieve the next character on the input *)
-    let input_ptr_value = build_load input_ptr "input_ptr_value" builder in
+    let input_ptr_value = build_load matchregex_input_ptr "input_ptr_value" builder in
     let next_char = build_load input_ptr_value "next_char" builder in
 
-    let next_char_32 = build_sext next_char (i32_type context) "next_char_32" builder in
+    (* let next_char_32 = build_sext next_char (i32_type context) "next_char_32" builder in
     let format_string3 = const_in_bounds_gep format_string (Array.of_list [ const_int (i32_type context) 0; const_int (i32_type context) 0 ]) in
-    let _ = build_call printf (Array.of_list [ format_string3; (build_global_string (intlist_to_s node) (intlist_to_s node) builder); next_char_32 ]) "printf_result" builder in
+    let _ = build_call printf (Array.of_list [ format_string3; (build_global_string (intlist_to_s node) (intlist_to_s node) builder); next_char_32 ]) "printf_result" builder in *)
 
 		let is_input_char_zero = build_icmp Icmp.Eq next_char (const_int (i8_type context) 0) "is-input-char-zero" builder in
 		(* Note that we still need to build the conditional jump that returns based on the output of this test, but we'll have to return to that after creating the the other blocks. *)
 
-		let if_done_block = append_block context ((intlist_to_s node) ^ "-if-done") main_f in
+		let if_done_block = append_block context ((intlist_to_s node) ^ "-if-done") matchregex_f in
 		(* When we're done, return true if the node is a final node *)
 		let is_final_node_as_int = if List.mem ~equal:(=) finals node then 1 else 0 in
 		position_at_end if_done_block builder;
@@ -135,12 +138,12 @@ let compile r =
         let dest_block = IntListMap.find dest_node node_block_map in
 
         (* Before jumping to the destination, advance to the next character on the input *)
-        let pre_dest_block = append_block context ((intlist_to_s node) ^ "-to-" ^ (intlist_to_s node) ^ "-pre-dest") main_f in
+        let pre_dest_block = append_block context ((intlist_to_s node) ^ "-to-" ^ (intlist_to_s node) ^ "-pre-dest") matchregex_f in
         position_at_end pre_dest_block builder;
         build_increment_input_ptr builder;
         build_br dest_block builder;
 
-        let transition_block = append_block context ((intlist_to_s node) ^ "-to-" ^ (intlist_to_s node)) main_f in
+        let transition_block = append_block context ((intlist_to_s node) ^ "-to-" ^ (intlist_to_s node)) matchregex_f in
   			position_at_end transition_block builder;
 
   			(match transition with

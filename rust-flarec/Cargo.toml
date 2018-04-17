@@ -1,0 +1,14 @@
+[package]
+name = "rust-flarec"
+version = "0.1.0"
+authors = ["Cole Erickson <nde1@williams.edu>"]
+
+[lib]
+name = "rustflareclib"
+path = "src/lib.rs"
+crate-type = ["dylib"]
+
+[dependencies]
+# We chose this package based partially on performance results from https://bitbucket.org/ewanhiggs/csv-game
+csv = "1.0.0-beta.5"
+libc = "0.2"
