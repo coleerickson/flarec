@@ -1,0 +1,8 @@
+(jbuild_version 1)
+
+(copy_files# flare/*{.ml,.mli,.mll,.mly})
+
+(executable
+    ((name flarec)
+     (libraries (core llvm))
+     ))
