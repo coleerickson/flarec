@@ -31,13 +31,6 @@ type vertical_constraint = [
 ]
 [@@deriving sexp]
 
-type flarex_ast = [
-  | `FConcat of flarex_ast * flarex_ast
-  | `FCell of regex * bool * horizontal_constraint * vertical_constraint
-  | `FAlternation of flarex_ast * flarex_ast
-  | `FEmpty
-]
-[@@deriving sexp]
 
 type flarex = [
   | `FConcat of flarex * flarex

@@ -22,6 +22,8 @@
 
 %start <Regex.value option> prog
 
+(* TODO rename this to regexParser.mly *)
+
 %%
 prog:
   | v = value { Some v }

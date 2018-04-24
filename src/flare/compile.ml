@@ -28,7 +28,7 @@ let int_type = i32_type context
 		)
 	) edges "" *)
 
-let compile r =
+let compile r output_path =
 	(* Do the parsing and DFA conversion immediately *)
 	let d = parse_regex_to_dfa_exn r in
 
@@ -194,7 +194,8 @@ let compile r =
 		(* let call = build_call f (Array.of_list []) "calltmp" builder in build_ret call builder; *)
 	(* Llvm_analysis.assert_valid_function f; *)
 	let result = string_of_llmodule the_module in
-	Printf.printf "%s\n" result;
-	let oc = open_out "a.ll" in
+  (* DEBUG print *)
+	(* Printf.printf "%s\n" result; *)
+	let oc = open_out output_path in
 	fprintf oc "%s\n" result;
 	close_out oc

@@ -77,6 +77,14 @@ let parse_match_big_test test_ctxt =
 let nfa_to_dfa_test test_ctxt =
   assert_equal (* (nfa_to_dfa (regex_to_nfa (parse_with_error (Lexing.from_string  *)
 
+let parse_flare_test test_ctxt =
+  assert_equal
+    (parse_flarex_exn "/a/r</b/>")
+    (`FConcat (
+      `FCell (`Char 'a', false, `NoHorizontal, `NoVertical),
+      `FCell (`Char 'b', true, `Right 1, `NoVertical)
+    ))
+
 (* Name the test cases and group them together *)
 let suite =
 "suite">:::
@@ -96,7 +104,8 @@ let suite =
   "intmap_add_extend_test">:: intmap_add_extend_test;
   "repeat_test">:: repeat_test;
   "repeat_zero_test">:: repeat_zero_test;
-  "regex_to_nfa_test">:: regex_to_nfa_test
+  "regex_to_nfa_test">:: regex_to_nfa_test;
+  "parse_flare_test">:: parse_flare_test
  ]
 ;;
 

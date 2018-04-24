@@ -16,3 +16,5 @@ bin
 test.c
 ex.c
 *.o
+sheetmatch
+*.csv

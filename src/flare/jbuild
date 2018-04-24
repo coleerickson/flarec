@@ -5,12 +5,11 @@
     (libraries (core llvm))
     ))
 
-(menhir 
+(menhir
     ; Though jbuilder insists that we add the "--infer" flag, doing so will
     ; cause the build to fail. So don't add it.
     ((flags (--explain))
-     (modules (parser))
+     (modules (parser flareParser))
      ))
 
-(ocamllex (lexer))
-
+(ocamllex (lexer flareLexer))

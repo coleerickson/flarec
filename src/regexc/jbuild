@@ -3,7 +3,6 @@
 (copy_files# flare/*{.ml,.mli,.mll,.mly})
 
 (executable
-    ((name flarec)
+    ((name regexc)
      (libraries (core llvm))
      ))
-
