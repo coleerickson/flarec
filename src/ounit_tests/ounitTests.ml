@@ -9,11 +9,11 @@ let test2 test_ctxt = assert_equal 100 100;;
 let repeat_test test_ctxt = assert_equal "heyheyhey" (repeat "hey" 3);;
 let repeat_zero_test test_ctxt = assert_equal "" (repeat "hey" 0);;
 
-let list_map_append_test test_ctxt =
+let intmap_add_extend_test test_ctxt =
   let e = IntMap.empty in
   let expected = IntMap.add 0 ["hey"; "hi"; "hello"] e in
   let actual = IntMap.add 0 ["hey"] e in
-  let actual = list_map_append 0 ["hi"; "hello"] actual in
+  let actual = intmap_add_extend 0 ["hi"; "hello"] actual in
   assert_equal expected actual;;
 
 let regex_to_nfa_test test_ctxt =
@@ -74,10 +74,6 @@ let parse_match_big_test test_ctxt =
   assert_equal false (match_regex "/abc(hi|hey|hello)*ab*c/" "abc");
   assert_equal true (match_regex "/abc(hi|hey|hello)*ab*c/" "abcabc")
 
-let compile_test1 test_ctxt =
-  codegen_func;
-  assert_equal true true
-
 let nfa_to_dfa_test test_ctxt =
   assert_equal (* (nfa_to_dfa (regex_to_nfa (parse_with_error (Lexing.from_string  *)
 
@@ -97,7 +93,7 @@ let suite =
   "parse_match_test">:: parse_match_test;
   "parse_match_question_mark_test">:: parse_match_question_mark_test;
   "parse_match_big_test">:: parse_match_big_test;
-  "list_map_append_test">:: list_map_append_test;
+  "intmap_add_extend_test">:: intmap_add_extend_test;
   "repeat_test">:: repeat_test;
   "repeat_zero_test">:: repeat_zero_test;
   "regex_to_nfa_test">:: regex_to_nfa_test

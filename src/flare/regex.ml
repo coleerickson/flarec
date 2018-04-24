@@ -11,6 +11,41 @@ type regex = [
   | `Wildcard
   | `Empty
 ]
+[@@deriving sexp]
+
+type horizontal_constraint = [
+  | `NoHorizontal
+  | `LeftAny
+  | `Left of int
+  | `RightAny
+  | `Right of int
+]
+[@@deriving sexp]
+
+type vertical_constraint = [
+  | `NoVertical
+  | `UpAny
+  | `Up of int
+  | `DownAny
+  | `Down of int
+]
+[@@deriving sexp]
+
+type flarex_ast = [
+  | `FConcat of flarex_ast * flarex_ast
+  | `FCell of regex * bool * horizontal_constraint * vertical_constraint
+  | `FAlternation of flarex_ast * flarex_ast
+  | `FEmpty
+]
+[@@deriving sexp]
+
+type flarex = [
+  | `FConcat of flarex * flarex
+  | `FCell of regex * bool * horizontal_constraint * vertical_constraint
+  | `FAlternation of flarex * flarex
+  | `FEmpty
+]
+[@@deriving sexp]
 
 type value = [
   | `Regex of regex
@@ -22,6 +57,7 @@ type value = [
   | `Null
   | `String of string
 ]
+[@@deriving sexp]
 
 
 (* TODO *)
