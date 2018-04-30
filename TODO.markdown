@@ -39,3 +39,14 @@ April 24:
 Implementation note. If all regexes in a Flare program exclude the empty string (i.e., we never match on blank cells in the spreadsheet), then the maximum search distance for the `*` quantifier is the greatest (Manhattan) distance between any two non-empty cells. This constraint can be relaxed if you want to allow some regexes to match empty cells (though why would you?). For example, if you want to allow a single regex in the Flare expression to be empty, then the search distance
 
 Dynamic programming optimization. Memoize regex evaluations. Then asymptotic time complexity is O(sum of length of all regexes * size of sheet + number of matches * size of spreadsheet ^ (height of flare tree)), which seems like the best you can really hope for and still have a complete solution. I know number of matches is not really a valid variable (not known beforehand), but I'd guess most users will be satisfied with linearity in number of matches. Kleene stars on both the horizontal and vertical are the worst thing for run time.  Practical performance issues will be left to heuristics, I suppose.
+
+Constant time bit vector operations
+
+
+--
+
+May 1:
+
+* Compile all regexes and expose function pointers as a function in the LLIR unit
+* Test ability of rust to deserialize JSON exposed by hardcoded fn in OCaml Flarec
+* Rust runtime

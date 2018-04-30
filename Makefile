@@ -36,15 +36,26 @@ regexmatcher.ll: regexc
 regexmatcherbinary: regexmatcher.ll
 	clang -o regexmatcherbinary regexmatcher.ll
 
-a.o: a.ll
-	clang -c a.ll
+regexmatcher.o: regexmatcher.ll
+	clang -c regexmatcher.ll
 
 cmain.o: cmain.c
-	clang -c cmain.c
+	clang -g -O0 -c cmain.c
 
 rustlib:
 	(cd rust-flarec && \
 	cargo build)
 
-sheetmatch: a.o cmain.o rustlib
-	clang -o sheetmatch cmain.o a.o ./rust-flarec/target/debug/librustflareclib.so
+sheetmatch: regexmatcher.o cmain.o rustlib
+	clang -o sheetmatch cmain.o regexmatcher.o ./rust-flarec/target/debug/librustflareclib.so
+
+flarellunit.ll: flarec
+	bin/flarec.exe "/a*/r/b/" flarellunit.ll && \
+	(cat flarellunit.ll | grep -v source_filename) > flarellunit.ll.tmp && \
+		mv flarellunit.ll.tmp flarellunit.ll
+
+flarellunit.o: flarellunit.ll
+	clang -g -O0 -c flarellunit.ll
+
+flaresheetmatch: flarellunit.o cmain.o rustlib
+	clang -o flaresheetmatch cmain.o flarellunit.o ./rust-flarec/target/debug/librustflareclib.so
