@@ -5,7 +5,8 @@ open Regex
 
 exception SyntaxError of string
 }
-
+(* TODO Fix parsing of spatial constraints so that they can be included inside regexes *)
+(* Maybe do so by generating with SLASH *)
 let lit_char = ['a'-'z' 'A'-'Z' '0'-'9' '_' ' ' ','] (* Adapting for non-unicode will probably just involve expanding this character class *)
 
 rule read =
@@ -13,7 +14,7 @@ rule read =
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }
   | '<'      { LEFT_BRACK }
-  | '>'      { RIGHT_BRACK } (* TODO see if you can still use r, l, u, d inside regexes with this approach*)
+  | '>'      { RIGHT_BRACK }
   | 'r' '*'  { HORIZONTAL_CONSTRAINT    `RightAny }
   | 'r'+     { HORIZONTAL_CONSTRAINT    (`Right (String.length (Lexing.lexeme lexbuf))) }
   | 'l' '*'  { HORIZONTAL_CONSTRAINT    `LeftAny }

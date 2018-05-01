@@ -50,7 +50,7 @@ sheetmatch: regexmatcher.o cmain.o rustlib
 	clang -o sheetmatch cmain.o regexmatcher.o ./rust-flarec/target/debug/librustflareclib.so
 
 flarellunit.ll: flarec
-	bin/flarec.exe "/a*/r/b/" flarellunit.ll && \
+	bin/flarec.exe "/42695/" flarellunit.ll && \
 	(cat flarellunit.ll | grep -v source_filename) > flarellunit.ll.tmp && \
 		mv flarellunit.ll.tmp flarellunit.ll
 
