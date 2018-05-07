@@ -14,6 +14,8 @@ let matchregex_f_type = function_type (i32_type context) (Array.of_list [ pointe
 let compile_regex_and_get_fn r =
   let d = (nfa_to_dfa (regex_to_nfa r)) in
 
+  let printf = Option.value_exn (lookup_function "printf" the_module) in
+
   let matchregex_f = define_function "matchregex" matchregex_f_type the_module in
   let matchregex_f_params = params matchregex_f in
   let matchregex_input_ptr_param = matchregex_f_params.(0) in
@@ -21,10 +23,7 @@ let compile_regex_and_get_fn r =
 
   let matchregex_entry_block = entry_block matchregex_f in
   let _ = position_at_end matchregex_entry_block builder in
-(* TODO remove these trhee liens if we don't actually need them for entry basicblock *)
-  (* Start creating the body of matchregex *)
-  (* let matchregex_block = append_block context "matchregexblock" matchregex_f in
-  position_at_end matchregex_block builder; *)
+
   let format_string = build_global_string "%20s --'%c'->\n" "formatstring" builder in
 
   (* Start by storing the parameter *)
@@ -60,6 +59,7 @@ let compile_regex_and_get_fn r =
     let next_char = build_load input_ptr_value "next_char" builder in
 
     (* DEBUG print the transition *)
+    (* TODO make this optional, a verbosity flag in flarec *)
     (* let next_char_32 = build_sext next_char (i32_type context) "next_char_32" builder in
     let format_string3 = const_in_bounds_gep format_string (Array.of_list [ const_int (i32_type context) 0; const_int (i32_type context) 0 ]) in
     let _ = build_call printf (Array.of_list [ format_string3; (build_global_string (intlist_to_s node) (intlist_to_s node) builder); next_char_32 ]) "printf_result" builder in *)
@@ -213,6 +213,9 @@ let serialize_flare_node {id; is_capture; h_constraint; v_constraint; successors
 let compile_flarex flarex output_path =
 	(* Do the parsing and DFA conversion immediately *)
 	let f = parse_flarex_exn flarex in
+
+  (* Declare printf for debugging *)
+	let printf = declare_function "printf" (var_arg_function_type (i32_type context) (Array.of_list [ pointer_type (i8_type context) ])) the_module in
 
   (* Compile all the regexes, build a global array of the pointers to the compiled functions *)
   let fptrs = compile_all_regexes_in_flarex f in

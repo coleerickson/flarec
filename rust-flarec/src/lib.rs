@@ -9,6 +9,7 @@ extern crate serde_derive;
 use std::error::Error;
 use std::process;
 use csv::Reader;
+use csv::Writer;
 
 // https://stackoverflow.com/a/24148033
 use libc::c_char;
@@ -47,7 +48,7 @@ struct FlareNode {
 
 extern {
     // https://stackoverflow.com/a/47455865
-    // fn matchregex(s: *const c_char) -> i32;
+    fn matchregex(s: *const c_char) -> i32;
 
     fn getregexpointers() -> *const (extern fn(*const c_char) -> i32);
     fn getregexpointerslength() -> i32;
@@ -55,7 +56,9 @@ extern {
 }
 
 fn get_regex_pointers_wrapper<'a>() -> &'a [extern fn(*const c_char) -> i32] {
-    unsafe { slice::from_raw_parts(getregexpointers(), getregexpointerslength() as usize) }
+    let pointers_length = unsafe { getregexpointerslength() } as usize;
+    println!("Retrieved {} function pointers for compiled regexes from LLIR unit.", pointers_length);
+    unsafe { slice::from_raw_parts(getregexpointers(), pointers_length) }
 }
 
 fn get_flare_nodes_wrapper<'a>() -> &'a str {
@@ -104,15 +107,15 @@ fn parse_csv_to_entries_array(path: &str) -> Result<Vec<Vec<String>>, Box<Error>
 }
 
 #[derive(Clone, Debug)]
-struct Cursor {
+struct Cursor<'a> {
     x: usize,
     y: usize,
-    matches: Vec<(usize, usize)>,
+    matches: Vec<(usize, usize, &'a str)>,
     current_node_id: usize,
 }
 
-impl Cursor {
-    fn new(x: usize, y: usize) -> Cursor {
+impl<'a> Cursor<'a> {
+    fn new(x: usize, y: usize) -> Cursor<'a> {
         Cursor {
             x: x,
             y: y,
@@ -154,6 +157,10 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
         }
     }
 
+    let width = entries.len();
+    let height = entries[0].len();
+    // println!("height: {}, width: {}", height, width);
+
     let mut iteration = 0;
     let mut results: Vec<Cursor> = vec![];
     let mut is_done = false;
@@ -161,42 +168,129 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
         iteration += 1;
         is_done = true;
         let mut new_cursors: Vec<Cursor> = vec![];
-        for cursor in cursors {
-            println!("Stepping cursor {:?}", cursor);
-            let entry = entries[cursor.x][cursor.y].clone();
-            println!("Corresponding sheet entry is {:?}", entry);
+        for mut cursor in cursors {
+            // println!("Stepping cursor {:?}", cursor);
+            // TODO allow margin
+            if cursor.x >= width || cursor.x <= 0 || cursor.y >= height || cursor.y <= 0 {
+                // println!("Skipping cursor because it left the bounds of the spreadsheet.");
+                continue;
+            }
+            let entry = &entries[cursor.x][cursor.y];
+            // println!("Corresponding sheet entry is {:?}", entry);
             let regex = &regexptrs[cursor.current_node_id];
 
-            let entry_cstr = CString::new(entry).unwrap().as_ptr();
-            let numeric_regex_result = regex(entry_cstr);
+            let numeric_regex_result = regex(CString::new(entry.clone()).unwrap().as_ptr());
             let is_match = 0 != numeric_regex_result;
-            println!("Match? {:?} (from {})", is_match, numeric_regex_result);
+
+            // println!("Match? {:?} (from {})", is_match, numeric_regex_result);
             if !is_match {
-                println!("No match. Skipping to next cursor.\n");
+                // println!("No match. Skipping to next cursor.\n");
                 continue;
             }
 
-            // TODO add spatial check
+            // Record the contents of the cell if this is a capturing Flare node.
             let current_node = &flare_nodes[cursor.current_node_id];
+            if current_node.is_capture {
+                // println!("Captured cell ({}, {}) with contents {}", cursor.x, cursor.y, entry);
+                cursor.matches.push((cursor.x, cursor.y, entry));
+            }
+
+            // TODO add spatial check
             if current_node.successors.len() == 0 {
-                println!("Match. No successors. This cursor has reached a final matching state.\n");
+                // println!("Match. No successors. This cursor has reached a final matching state.\n");
                 results.push(cursor);
-                is_done = false;
             } else {
-                println!("Match. {} successors. Generating cursors.\n", current_node.successors.len());
+                // println!("Match. {} successors. Generating cursors.", current_node.successors.len());
+
+                // If we have to go to successors, then we're not done
+                is_done = false;
+
                 for successor_id in current_node.successors.iter() {
-                    let mut new_cursor = cursor.clone();
-                    new_cursor.current_node_id = *successor_id;
+                    // println!("Generating successor cursors that transition to Flare node {}.", successor_id);
+                    let mut horizontal_cursors = vec![];
                     let ref successor = flare_nodes[*successor_id];
-                    // TODO extend to all constraints
+
                     match successor.horizontal_constraint {
-                        HorizontalConstraint::Right(1) => {
-                            println!("Found a right-one constraint.");
-                            new_cursor.x += 1;
+                        HorizontalConstraint::NoHorizontal => {
+                            let mut horizontal_cursor = cursor.clone();
+                            horizontal_cursor.current_node_id = *successor_id;
+                            horizontal_cursors.push(horizontal_cursor);
                         },
-                        _ => {},
+                        HorizontalConstraint::Right(n) => {
+                            // println!("Found a right-{} constraint.", n);
+                            let mut horizontal_cursor = cursor.clone();
+                            horizontal_cursor.current_node_id = *successor_id;
+                            horizontal_cursor.x += n as usize;
+                            horizontal_cursors.push(horizontal_cursor);
+                        },
+                        HorizontalConstraint::Left(n) => {
+                            // println!("Found a left-{} constraint.", n);
+                            let mut horizontal_cursor = cursor.clone();
+                            horizontal_cursor.current_node_id = *successor_id;
+                            horizontal_cursor.x -= n as usize;
+                            horizontal_cursors.push(horizontal_cursor);
+                        },
+                        HorizontalConstraint::RightAny => {
+                            // println!("Found a right-any constraint.");
+                            for new_x in (cursor.x)..width {
+                                let mut horizontal_cursor = cursor.clone();
+                                horizontal_cursor.current_node_id = *successor_id;
+                                horizontal_cursor.x = new_x as usize;
+                                horizontal_cursors.push(horizontal_cursor);
+                            }
+                        },
+                        HorizontalConstraint::LeftAny => {
+                            // println!("Found a left-any constraint.");
+                            for new_x in 0..(cursor.x + 1) {
+                                let mut horizontal_cursor = cursor.clone();
+                                horizontal_cursor.current_node_id = *successor_id;
+                                horizontal_cursor.x = new_x as usize;
+                                horizontal_cursors.push(horizontal_cursor);
+                            }
+                        },
                     }
-                    new_cursors.push(new_cursor);
+
+                    match successor.vertical_constraint {
+                        VerticalConstraint::Up(n) => {
+                            // println!("Found an up-{} constraint.", n);
+                            for mut vertical_cursor in horizontal_cursors {
+                                vertical_cursor.y -= n as usize;
+                                new_cursors.push(vertical_cursor);
+                            }
+                        },
+                        VerticalConstraint::Down(n) => {
+                            // println!("Found a down-{} constraint.", n);
+                            for mut vertical_cursor in horizontal_cursors {
+                                vertical_cursor.y += n as usize;
+                                new_cursors.push(vertical_cursor);
+                            }
+                        },
+                        VerticalConstraint::UpAny => {
+                            // println!("Found an up-any constraint.");
+                            for horizontal_cursor in horizontal_cursors {
+                                for new_y in 0..(cursor.y + 1) {
+                                    let mut vertical_cursor = horizontal_cursor.clone();
+                                    vertical_cursor.y = new_y as usize;
+                                    new_cursors.push(vertical_cursor);
+                                }
+                            }
+                        },
+                        VerticalConstraint::DownAny => {
+                            // println!("Found a down-any constraint.");
+                            for horizontal_cursor in horizontal_cursors {
+                                for new_y in (cursor.y)..height {
+                                    let mut vertical_cursor = horizontal_cursor.clone();
+                                    vertical_cursor.y = new_y as usize;
+                                    new_cursors.push(vertical_cursor);
+                                }
+                            }
+                        },
+                        VerticalConstraint::NoVertical => {
+                            new_cursors.extend(horizontal_cursors);
+                        },
+                    }
+
+                    // println!("Generated successor cursors {:?}", new_cursors);
                 }
             }
         }
@@ -204,9 +298,16 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
         cursors = new_cursors; // TODO swap instead
     }
     println!("Completed with {} match(es):\n", results.len());
-    for result in results {
+    for result in &results {
         println!("\t{:?}", result);
     }
+
+    let mut wtr = Writer::from_path("a.csv")?;
+    for result in results {
+        let match_entries: Vec<&str> = result.matches.iter().map(|&(x, y, entry)| entry).collect();
+        wtr.write_record(match_entries)?;
+    }
+    wtr.flush()?;
 
     Ok(())
 }
