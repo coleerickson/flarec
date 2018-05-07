@@ -1,7 +1,9 @@
 %token LEFT_PAREN
 %token RIGHT_PAREN
-%token LEFT_BRACK
-%token RIGHT_BRACK
+%token LEFT_ANGLE_BRACK
+%token RIGHT_ANGLE_BRACK
+%token LEFT_SQUARE_BRACK
+%token RIGHT_SQUARE_BRACK
 %token <Regex.horizontal_constraint> HORIZONTAL_CONSTRAINT
 %token <Regex.vertical_constraint> VERTICAL_CONSTRAINT
 %token EOF
@@ -11,20 +13,21 @@
 %token PERIOD
 %token QUESTION_MARK
 %token SLASH
-%token <token list> TOKEN_GROUP
+%token COMMA
+%token <token list> TOKEN_GROUP /* Not actually used, but necessary for FlareLexer*/
 
 %start <Regex.flarex option> prog
 
 %%
 prog:
-  | v = flarex; EOF { Some v }
+  | v = flarex; EOF { Some (`FConcat (`FCell ((`Repetition `Wildcard), false, `NoHorizontal, `NoVertical), v)) }
   | EOF       { None   }
   ;
 
 flarex:
   /* | r = regex_wrapper { `FCell (r, true, `NoHorizontal, `NoVertical) } */
-  | f1 = flarex; f2 = constrained_cell { `FConcat (f1, f2) }
-  | f = constrained_cell                      { f }
+  | f1 = flarex; f2 = cell_or_alternation { `FConcat (f1, f2) }
+  | f = cell_or_alternation                      { f }
   ;
 
 horizontal_constraint:
@@ -35,8 +38,16 @@ vertical_constraint:
     | v = VERTICAL_CONSTRAINT {v}
     | { `NoVertical }
 
+alternation:
+    | f1 = alternation; COMMA; f2 = constrained_cell { `FAlternation (f1, f2) }
+    | f = constrained_cell { f }
+
+cell_or_alternation:
+    | LEFT_SQUARE_BRACK; f = alternation; RIGHT_SQUARE_BRACK { f }
+    | f = constrained_cell { f }
+
 constrained_cell:
-  | h = horizontal_constraint; v = vertical_constraint; LEFT_BRACK; r = regex_wrapper; RIGHT_BRACK  { `FCell (r, true, h, v) }  ;
+  | h = horizontal_constraint; v = vertical_constraint; LEFT_ANGLE_BRACK; r = regex_wrapper; RIGHT_ANGLE_BRACK  { `FCell (r, true, h, v) }  ;
   | h = horizontal_constraint; v = vertical_constraint; r = regex_wrapper { `FCell (r, false, h, v) }  ;
 
 regex_wrapper:

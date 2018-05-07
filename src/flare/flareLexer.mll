@@ -12,8 +12,11 @@ rule raw_read =
   parse
   | '('      { LEFT_PAREN }
   | ')'      { RIGHT_PAREN }
-  | '<'      { LEFT_BRACK }
-  | '>'      { RIGHT_BRACK }
+  | '<'      { LEFT_ANGLE_BRACK }
+  | '>'      { RIGHT_ANGLE_BRACK }
+  | '['      { LEFT_SQUARE_BRACK }
+  | ']'      { RIGHT_SQUARE_BRACK }
+  | ','      { COMMA }
   | 'r' '*'  { HORIZONTAL_CONSTRAINT    `RightAny }
   | 'r'+     { HORIZONTAL_CONSTRAINT    (`Right (String.length (Lexing.lexeme lexbuf))) }
   | 'l' '*'  { HORIZONTAL_CONSTRAINT    `LeftAny }
