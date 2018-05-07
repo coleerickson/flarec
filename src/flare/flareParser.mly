@@ -6,11 +6,12 @@
 %token <Regex.vertical_constraint> VERTICAL_CONSTRAINT
 %token EOF
 %token <char> CHAR
-%token SLASH
 %token STAR
 %token OR_PIPE
 %token PERIOD
 %token QUESTION_MARK
+%token SLASH
+%token <token list> TOKEN_GROUP
 
 %start <Regex.flarex option> prog
 

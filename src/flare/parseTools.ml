@@ -43,12 +43,17 @@ let match_regex regex_s s =
 
 let parse_regex_to_dfa_exn s = nfa_to_dfa (parse_regex_to_nfa_exn s)
 
+let print_match_regex regex s =
+  Printf.printf "regex: %s\ns: %s\n" regex s;
+  Printf.printf "%s\n" (if match_regex regex s then "match" else "no match");
+  ()
+
 let parse_flarex_with_error lexbuf =
   try FlareParser.prog FlareLexer.read lexbuf with
   | SyntaxError msg ->
     fprintf stderr "%a: %s\n" print_position lexbuf msg;
     None
-  | Parser.Error ->
+  | FlareParser.Error ->
     fprintf stderr "%a: syntax error\n" print_position lexbuf;
     exit (-1)
 
@@ -56,8 +61,3 @@ let parse_flarex_exn s =
   match (parse_flarex_with_error (Lexing.from_string s)) with
   | Some f -> f
   | _ -> raise (Invalid_argument "Failed to parse regex")
-
-let print_match_regex regex s =
-  Printf.printf "regex: %s\ns: %s\n" regex s;
-  Printf.printf "%s\n" (if match_regex regex s then "match" else "no match");
-  ()

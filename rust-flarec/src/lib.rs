@@ -48,7 +48,7 @@ struct FlareNode {
 
 extern {
     // https://stackoverflow.com/a/47455865
-    fn matchregex(s: *const c_char) -> i32;
+    // fn matchregex(s: *const c_char) -> i32;
 
     fn getregexpointers() -> *const (extern fn(*const c_char) -> i32);
     fn getregexpointerslength() -> i32;
@@ -161,6 +161,9 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
     let height = entries[0].len();
     // println!("height: {}, width: {}", height, width);
 
+    let mut wtr = Writer::from_path("a.csv")?;
+
+
     let mut iteration = 0;
     let mut results: Vec<Cursor> = vec![];
     let mut is_done = false;
@@ -198,6 +201,12 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
             // TODO add spatial check
             if current_node.successors.len() == 0 {
                 // println!("Match. No successors. This cursor has reached a final matching state.\n");
+
+
+                let match_entries: Vec<&str> = cursor.matches.iter().map(|&(x, y, entry)| entry).collect();
+                wtr.write_record(match_entries)?;
+                wtr.flush()?;
+
                 results.push(cursor);
             } else {
                 // println!("Match. {} successors. Generating cursors.", current_node.successors.len());
@@ -298,16 +307,16 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
         cursors = new_cursors; // TODO swap instead
     }
     println!("Completed with {} match(es):\n", results.len());
-    for result in &results {
-        println!("\t{:?}", result);
-    }
-
-    let mut wtr = Writer::from_path("a.csv")?;
-    for result in results {
-        let match_entries: Vec<&str> = result.matches.iter().map(|&(x, y, entry)| entry).collect();
-        wtr.write_record(match_entries)?;
-    }
-    wtr.flush()?;
+    // for result in &results {
+    //     println!("\t{:?}", result);
+    // }
+    //
+    // let mut wtr = Writer::from_path("a.csv")?;
+    // for result in results {
+    //     let match_entries: Vec<&str> = result.matches.iter().map(|&(x, y, entry)| entry).collect();
+    //     wtr.write_record(match_entries)?;
+    // }
+    // wtr.flush()?;
 
     Ok(())
 }
