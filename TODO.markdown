@@ -50,3 +50,5 @@ May 1:
 * Compile all regexes and expose function pointers as a function in the LLIR unit
 * Test ability of rust to deserialize JSON exposed by hardcoded fn in OCaml Flarec
 * Rust runtime
+
+* Add match-first semantics

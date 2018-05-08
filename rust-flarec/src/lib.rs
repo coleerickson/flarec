@@ -295,6 +295,7 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
             }).collect();
             let new_len = expanded_cursors.len();
             println!("After matching against the regex, we got rid of {} cursors ({} -> {})", prev_len - new_len, prev_len, new_len);
+
             //
             // if let Some((successor_id, other_successors)) = current_node.successors.split_first() {
             //     if other_successors.len() > 0 {
