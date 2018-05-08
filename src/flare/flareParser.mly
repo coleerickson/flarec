@@ -19,8 +19,9 @@
 %start <Regex.flarex option> prog
 
 %%
+/* | v = flarex; EOF { Some (`FConcat (`FCell ((`Repetition `Wildcard), false, `NoHorizontal, `NoVertical), v)) } */
 prog:
-  | v = flarex; EOF { Some (`FConcat (`FCell ((`Repetition `Wildcard), false, `NoHorizontal, `NoVertical), v)) }
+  | v = flarex; EOF { Some v }
   | EOF       { None   }
   ;
 
@@ -39,8 +40,8 @@ vertical_constraint:
     | { `NoVertical }
 
 alternation:
-    | f1 = alternation; COMMA; f2 = constrained_cell { `FAlternation (f1, f2) }
-    | f = constrained_cell { f }
+    | f1 = alternation; COMMA; f2 = flarex { `FAlternation (f1, f2) }
+    | f = flarex { f }
 
 cell_or_alternation:
     | LEFT_SQUARE_BRACK; f = alternation; RIGHT_SQUARE_BRACK { f }

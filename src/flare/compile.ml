@@ -165,6 +165,7 @@ type flare_node = {
   h_constraint: horizontal_constraint;
   v_constraint: vertical_constraint;
   successors: int list;
+  description: string;
 }
 
 let numbered_flarex_to_flare_node_list numbered_f =
@@ -174,7 +175,7 @@ let numbered_flarex_to_flare_node_list numbered_f =
     let (right_firsts, right_out) = accumulate_flare_nodes_and_return_firsts right firsts_afterward in
     let (left_firsts, left_out) = accumulate_flare_nodes_and_return_firsts left right_firsts in
     (left_firsts, (left_out @ right_out))
-  | `NFCell (i, r, c, h, v) -> ([i], [{id=i; is_capture=c; h_constraint=h; v_constraint=v; successors=firsts_afterward}])
+  | `NFCell (i, r, c, h, v) -> ([i], [{id=i; is_capture=c; h_constraint=h; v_constraint=v; successors=firsts_afterward; description=(regex_to_s r)}])
   | `NFAlternation (a, b) ->
     let (a_firsts, a_out) = accumulate_flare_nodes_and_return_firsts a firsts_afterward in
     let (b_firsts, b_out) = accumulate_flare_nodes_and_return_firsts b firsts_afterward in
@@ -202,13 +203,14 @@ let serialize_successors l = l
   |> String.concat ~sep:", "
   |> Printf.sprintf "[%s]"
 
-let serialize_flare_node {id; is_capture; h_constraint; v_constraint; successors} =
-  Printf.sprintf "{\"id\": %d, \"is_capture\": %s, \"horizontal_constraint\": %s, \"vertical_constraint\": %s, \"successors\": %s}"
+let serialize_flare_node {id; is_capture; h_constraint; v_constraint; successors; description} =
+  Printf.sprintf "{\"id\": %d, \"is_capture\": %s, \"horizontal_constraint\": %s, \"vertical_constraint\": %s, \"successors\": %s, \"description\": \"%s\"}"
     id
     (if is_capture then "true" else "false")
     (serialize_horizontal_constraint h_constraint)
     (serialize_vertical_constraint v_constraint)
     (serialize_successors successors)
+    description
 
 let compile_flarex flarex output_path =
 	(* Do the parsing and DFA conversion immediately *)
@@ -217,8 +219,17 @@ let compile_flarex flarex output_path =
   (* Declare printf for debugging *)
 	let printf = declare_function "printf" (var_arg_function_type (i32_type context) (Array.of_list [ pointer_type (i8_type context) ])) the_module in
 
-  (* Compile all the regexes, build a global array of the pointers to the compiled functions *)
+  (* Compile all the regexes in the Flare program *)
   let fptrs = compile_all_regexes_in_flarex f in
+
+  (* Once we've compiled them, label the Flare nodes and sort them. Zip together with fptrs to ensure that indices correspond in both lists. *)
+  let _, flare_node_list = f |> flarex_to_numbered_flarex |> numbered_flarex_to_flare_node_list in
+  let (flare_node_list, fptrs) = List.zip flare_node_list fptrs
+  |> Option.value ~default:[] (* TODO We should throw an exception, but... I'm lazy. *)
+  |> List.sort ~cmp:(fun (a, _) (b, _) -> a.id - b.id)
+  |> List.unzip in
+
+  (* Build a global array of the pointers to the compiled functions *)
   let num_fptrs = List.length fptrs in
   let matchregex_fptr_type = pointer_type matchregex_f_type in
   let fptrs_const_array = const_array matchregex_fptr_type (Array.of_list fptrs) in
@@ -247,7 +258,6 @@ let compile_flarex flarex output_path =
   let getflarenodes_f = declare_function "getflarenodes" getflarenodes_f_type the_module in
   let getflarenodes_block = append_block context "getflarenodesblock" getflarenodes_f in
   let _ = position_at_end getflarenodes_block builder in
-  let _, flare_node_list = f |> flarex_to_numbered_flarex |> numbered_flarex_to_flare_node_list in
   let flare_nodes_string = flare_node_list
     |> List.map ~f:serialize_flare_node
     |> String.concat ~sep:", "

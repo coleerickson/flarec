@@ -277,29 +277,29 @@ let rec print_regex outc = function
 let regex_to_s r =
   let rec r_to_s indent = function
   | `Concat (r1, r2) ->
-    (repeat "  " indent) ^ "(concat\n" ^
+    (repeat "  " indent) ^ "(concat " ^
                             (r_to_s (indent + 1) r1) ^
                             (r_to_s (indent + 1) r2) ^
-    (repeat "  " indent) ^ ")\n"
+    (repeat "  " indent) ^ ") "
   | `Group r ->
-    (repeat "  " indent) ^ "(group\n" ^
+    (repeat "  " indent) ^ "(group " ^
                             (r_to_s (indent + 1) r) ^
-    (repeat "  " indent) ^ ")\n"
+    (repeat "  " indent) ^ ") "
   | `Alternation (r1, r2) ->
-    (repeat "  " indent) ^ "(alternation\n" ^
+    (repeat "  " indent) ^ "(alternation " ^
                            (r_to_s (indent + 1) r1) ^
                            (r_to_s (indent + 1) r2) ^
-    (repeat "  " indent) ^ ")\n"
+    (repeat "  " indent) ^ ") "
   | `Repetition r ->
-    (repeat "  " indent) ^ "(repetition\n" ^
+    (repeat "  " indent) ^ "(repetition " ^
                            (r_to_s (indent + 1) r) ^
-    (repeat "  " indent) ^ ")\n"
+    (repeat "  " indent) ^ ") "
   | `Wildcard   ->
-    (repeat "  " indent) ^ "(wildcard)\n"
+    (repeat "  " indent) ^ "(wildcard) "
   | `Char c     ->
-    (repeat "  " indent) ^ "'" ^ String.make 1 c ^ "'\n"
+    (repeat "  " indent) ^ "'" ^ String.make 1 c ^ "' "
   | `Empty      ->
-    (repeat "  " indent) ^ "(empty)\n" in
+    (repeat "  " indent) ^ "(empty) " in
   r_to_s 0 r
 
 let rec output_value outc = function
