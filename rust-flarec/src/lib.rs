@@ -17,6 +17,8 @@ use std::ffi::CString;
 use std::ffi::CStr;
 use std::slice;
 
+use std::collections::VecDeque;
+
 #[derive(Serialize, Deserialize, Debug)]
 enum HorizontalConstraint {
     NoHorizontal,
@@ -113,7 +115,7 @@ struct Cursor<'a> {
     y: i32,
     matches: Vec<(i32, i32, &'a str)>,
     current_node_id: usize,
-    revisitation_points: Vec<(i32, i32, usize)>,
+    revisitation_points: VecDeque<(i32, i32, usize)>,
 }
 
 impl<'a> Cursor<'a> {
@@ -123,7 +125,7 @@ impl<'a> Cursor<'a> {
             y: y,
             matches: vec![],
             current_node_id: 0,
-            revisitation_points: vec![],
+            revisitation_points: VecDeque::new(),
         }
     }
 }
@@ -132,7 +134,7 @@ impl<'a> Cursor<'a> {
 fn spatially_expand<'a>(cursor: &Cursor<'a>, successor_id: usize, flare_nodes: &Vec<FlareNode>, width: i32, height: i32) -> Vec<Cursor<'a>> {
     let mut horizontal_cursors = vec![];
     let ref successor = flare_nodes[successor_id];
-    println!("Generating successor cursors that transition to Flare node {} using constraints {:?}, {:?}", successor_id, successor.horizontal_constraint, successor.vertical_constraint);
+    println!("Performing spatial expanding for node {} using its constraints {:?}, {:?}", successor_id, successor.horizontal_constraint, successor.vertical_constraint);
 
     match successor.horizontal_constraint {
         HorizontalConstraint::NoHorizontal => {
@@ -214,6 +216,8 @@ fn spatially_expand<'a>(cursor: &Cursor<'a>, successor_id: usize, flare_nodes: &
             vertical_cursors.extend(horizontal_cursors);
         },
     }
+
+    println!("Spatially expanded to retrieve {} new cursors: {:?}", vertical_cursors.len(), vertical_cursors);
     vertical_cursors
 }
 
@@ -268,93 +272,72 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
         for mut cursor in cursors {
             println!("Stepping cursor {:?}", cursor);
             // TODO allow margin
-            if cursor.x >= width || cursor.y >= height || cursor.x < 0 || cursor.y < 0 {
-                println!("Skipping cursor because it left the bounds of the spreadsheet.");
-                continue;
-            }
-            let entry = &entries[cursor.x as usize][cursor.y as usize];
-            println!("Corresponding sheet entry is {:?}", entry);
-            let regex = &regexptrs[cursor.current_node_id];
 
-            let numeric_regex_result = regex(CString::new(entry.clone()).unwrap().as_ptr());
-            let is_match = 0 != numeric_regex_result;
 
-            println!("Match? {:?} (from {})", is_match, numeric_regex_result);
-            if !is_match {
-                println!("No match. Skipping to next cursor.\n");
-                continue;
-            }
-
-            // Record the contents of the cell if this is a capturing Flare node.
             let current_node = &flare_nodes[cursor.current_node_id];
-            if current_node.is_capture {
-                println!("Captured cell ({}, {}) with contents {}", cursor.x, cursor.y, entry);
-                cursor.matches.push((cursor.x, cursor.y, entry));
-            }
+            let expanded_cursors: Vec<Cursor> = spatially_expand(&cursor, cursor.current_node_id, &flare_nodes, width, height);
 
-            // TODO add spatial check
-            if current_node.successors.len() == 0 {
-                if cursor.revisitation_points.len() == 0 {
-                    println!("Match. No successors. This cursor has reached a final matching state.\n");
-                    // let match_entries: Vec<&str> = cursor.matches.iter().map(|&(_, _, entry)| entry).collect();
-                    // wtr.write_record(match_entries)?;
-                    // wtr.flush()?;
-
-                    results.push(cursor);
-                    continue;
-                } else {
-                    let (revisit_x, revisit_y, revisit_node_id) = cursor.revisitation_points.pop().unwrap();
-                    println!("No successors at node {}, so we'll go back to ({}, {}) and check node {}", current_node.id, revisit_x, revisit_y, revisit_node_id);
-                    cursor.x = revisit_x;
-                    cursor.y = revisit_y;
-                    cursor.current_node_id = revisit_node_id;
-                    new_cursors.push(cursor.clone());
-                    is_done = false;
-                    continue;
+            let prev_len = expanded_cursors.len();
+            let mut expanded_cursors: Vec<Cursor> = expanded_cursors.into_iter().filter(|ref mut c| {
+                if c.x >= width || c.y >= height || c.x < 0 || c.y < 0 {
+                    println!("Skipping cursor because it left the bounds of the spreadsheet.");
+                    return false;
                 }
-            }
+
+                let entry = &entries[c.x as usize][c.y as usize];
+                println!("Corresponding sheet entry is {:?}", entry);
+                let regex = &regexptrs[c.current_node_id];
+
+                let numeric_regex_result = regex(CString::new(entry.clone()).unwrap().as_ptr());
+                let is_match = 0 != numeric_regex_result;
+
+                is_match
+            }).collect();
+            let new_len = expanded_cursors.len();
+            println!("After matching against the regex, we got rid of {} cursors ({} -> {})", prev_len - new_len, prev_len, new_len);
             //
-            // let current_node = &flare_nodes[cursor.current_node_id];
-            // if current_node.is_capture {
-            //     println!("Captured cell ({}, {}) with contents {}", cursor.x, cursor.y, entry);
-            //     cursor.matches.push((cursor.x, cursor.y, entry));
-            // }
-
-            // println!("Match. {} successors. Generating cursors.", current_node.successors.len());
-
-            // If we have to go to successors, then we're not done
-            is_done = false;
-
-            println!("Splitting successors");
-            if let Some((successor_id, other_successors)) = current_node.successors.split_first() {
-
-                if other_successors.len() > 0 {
-                    println!("Going ahead with node {}, but we'll revisit {:?}", successor_id, other_successors);
-                } else {
-                    println!("Going ahead with node {}. There are no other successors.", successor_id);
+            // if let Some((successor_id, other_successors)) = current_node.successors.split_first() {
+            //     if other_successors.len() > 0 {
+            //         println!("Going ahead with node {}, but we'll revisit {:?}", successor_id, other_successors);
+            //     } else {
+            //         println!("Going ahead with node {}. There are no other successors.", successor_id);
+            //     }
+            for ref mut c in &mut expanded_cursors {
+                // Record the contents of the cell if this is a capturing Flare node.
+                if (&flare_nodes[c.current_node_id]).is_capture {
+                    let entry = &entries[c.x as usize][c.y as usize];
+                    println!("Captured cell ({}, {}) with contents {}", c.x, c.y, entry);
+                    c.matches.push((c.x, c.y, entry));
                 }
 
-                let vertical_cursors = spatially_expand(&cursor, *successor_id, &flare_nodes, width, height);
-
-                // After following this branch, we'll need to pick up where we left off with the other successors. We do so by doing the spatial expansion now and storing the resulting location. In the cursor. It's necessary to do the spatial expansion now because of the way we've ordered regular expression matching. It would be best if we rewrote this method so as to do the spatial expansion before the regex test. But we didn't. We'll see if we have time. TODO.
-
-                let mut cursors_with_revisitation_points = vec![];
-                for c in vertical_cursors {
-                    let mut cursor_with_revisit = c.clone();
-                    for other_successor_id in other_successors {
-                        for c_destination in spatially_expand(&cursor, *other_successor_id, &flare_nodes, width, height) {
-                            cursor_with_revisit.revisitation_points.push((c_destination.x, c_destination.y, *other_successor_id));
-                        }
-                    }
-                    cursors_with_revisitation_points.push(cursor_with_revisit);
+                for successor_id in &current_node.successors {
+                    c.revisitation_points.push_back((c.x, c.y, *successor_id));
                 }
-
-                new_cursors.extend(cursors_with_revisitation_points);
-            } else {
-                println!("No successors!");
             }
 
-            println!("Generated successor cursors {:?}\n", new_cursors);
+            for ref mut c in &mut expanded_cursors {
+                if c.revisitation_points.len() == 0 {
+                    println!("Match. No successors. This cursor has reached a final matching state.\n");
+                    let match_entries: Vec<&str> = cursor.matches.iter().map(|&(_, _, entry)| entry).collect();
+                    wtr.write_record(match_entries)?;
+                    wtr.flush()?;
+
+                    results.push(c.clone());
+                } else {
+                    // If we created cursors, then we're not done
+                    is_done = false;
+
+                    let (revisit_x, revisit_y, revisit_node_id) = c.revisitation_points.pop_front().unwrap();
+                    println!("No successors at node {}, so we'll go back to ({}, {}) and check node {}", c.current_node_id, revisit_x, revisit_y, revisit_node_id);
+                    c.x = revisit_x;
+                    c.y = revisit_y;
+                    c.current_node_id = revisit_node_id;
+                    println!("Added cursor {:?}\n", c);
+                    new_cursors.push(c.clone());
+                }
+            }
+
+            // new_cursors.extend(expanded_cursors);
         }
         println!("Iteration {} complete. Finished a pass through all the cursors.\n", iteration);
         cursors = new_cursors; // TODO swap instead

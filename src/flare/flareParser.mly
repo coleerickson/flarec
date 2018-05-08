@@ -19,8 +19,8 @@
 %start <Regex.flarex option> prog
 
 %%
-/* | v = flarex; EOF { Some (`FConcat (`FCell ((`Repetition `Wildcard), false, `NoHorizontal, `NoVertical), v)) } */
 prog:
+  /* | v = flarex; EOF { Some (`FConcat (`FCell ((`Repetition `Wildcard), false, `NoHorizontal, `NoVertical), v)) } */
   | v = flarex; EOF { Some v }
   | EOF       { None   }
   ;
