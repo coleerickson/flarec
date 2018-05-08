@@ -296,13 +296,23 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
             let new_len = expanded_cursors.len();
             println!("After matching against the regex, we got rid of {} cursors ({} -> {})", prev_len - new_len, prev_len, new_len);
 
+            // NOTE Match first semantics here. TODO build this into the syntax.
+            // expanded_cursors.sort_unstable_by(|ref a, ref b| {
             //
-            // if let Some((successor_id, other_successors)) = current_node.successors.split_first() {
-            //     if other_successors.len() > 0 {
-            //         println!("Going ahead with node {}, but we'll revisit {:?}", successor_id, other_successors);
-            //     } else {
-            //         println!("Going ahead with node {}. There are no other successors.", successor_id);
-            //     }
+            //     let ordering = ((b.x + b.y) - (cursor.x + cursor.y)).cmp(
+            //         &((a.x + a.y) - (cursor.x + cursor.y))
+            //     ).then((b.x - cursor.x).cmp(&(a.x - cursor.x)));
+            //     println!("{:?} vs {:?} --> {:?}", a, b, ordering);
+            //     ordering
+            // });
+            //
+            // let mut first_match_vector = vec![];
+            // match expanded_cursors.first() {
+            //     Some(first_match) => { first_match_vector.push(first_match.clone()); },
+            //     _ => {},
+            // }
+            // let mut expanded_cursors = first_match_vector;
+
             for ref mut c in &mut expanded_cursors {
                 // Record the contents of the cell if this is a capturing Flare node.
                 if (&flare_nodes[c.current_node_id]).is_capture {

@@ -51,8 +51,9 @@ sheetmatch: regexmatcher.o cmain.o rustlib
 
 # bin/flarec.exe "</hi/>[r</hey/>,rr</hello/>]" flarellunit.ll &&
 # bin/flarec.exe "</..*/>[u<//>,l<//>,r</.*/>r*</.*/>]" flarellunit.ll &&
+	# bin/flarec.exe "</..*/>l*u*</..*/>[l//,u//]" flarellunit.ll &&
 flarellunit.ll: flarec
-	bin/flarec.exe "</..*/>l*u*</..*/>[l//,u//]" flarellunit.ll && \
+	bin/flarec.exe "</..*/>l/.*/l*u*</..*/>[l//,u//,d//]" flarellunit.ll && \
 	(cat flarellunit.ll | grep -v source_filename) > flarellunit.ll.tmp && \
 		mv flarellunit.ll.tmp flarellunit.ll
 
