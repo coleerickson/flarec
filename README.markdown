@@ -39,7 +39,9 @@ Run `make test`.
 
 I've sketched out the steps I used in reproducing my build environment. They are brief, but I believe they are complete. Don't hesitate to let me know if these instructions are unclear or incorrect.
 
-1. Create a virtual machine using the minimal version (no office applications, etc.) of [Lubuntu](https://lubuntu.net/) 18.04 64-bit install in VMWare Player
+1. Create a virtual machine using the minimal version of Lubuntu 18.04 64-bit in VMWare Player
+
+[Download here](https://lubuntu.net/)
 
 2. Update apt
 
@@ -92,3 +94,5 @@ let () =
 14. Build, for example, the `flaresheetmatch` target
 
 `make flaresheetmatch`
+
+15. 👍
