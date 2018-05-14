@@ -68,8 +68,6 @@ fn get_flare_nodes_wrapper<'a>() -> &'a str {
      unsafe { CStr::from_ptr(getflarenodes()) }.to_str().unwrap()
 }
 
-// static mut flare_nodes =
-
 fn parse_csv_to_entries_array(path: &str) -> Result<Vec<Vec<String>>, Box<Error>> {
     // Take an initial pass over the CSV to get its dimensions.
     let mut rdr = Reader::from_path(path)?;
@@ -329,10 +327,6 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
             for ref mut c in &mut expanded_cursors {
                 if c.revisitation_points.len() == 0 {
                     println!("Match. No successors. This cursor has reached a final matching state.\n");
-                    let match_entries: Vec<&str> = cursor.matches.iter().map(|&(_, _, entry)| entry).collect();
-                    wtr.write_record(match_entries)?;
-                    wtr.flush()?;
-
                     results.push(c.clone());
                 } else {
                     // If we created cursors, then we're not done
@@ -357,13 +351,12 @@ fn run_flare(path: &str) -> Result<(), Box<Error>> {
     for result in &results {
         println!("\t{:?}", result);
     }
-    //
-    // let mut wtr = Writer::from_path("a.csv")?;
-    // for result in results {
-    //     let match_entries: Vec<&str> = result.matches.iter().map(|&(x, y, entry)| entry).collect();
-    //     wtr.write_record(match_entries)?;
-    // }
-    // wtr.flush()?;
+
+    for result in results {
+      let match_entries: Vec<&str> = result.matches.iter().map(|&(_x, _y, entry)| entry).collect();
+      wtr.write_record(match_entries)?;
+    }
+    wtr.flush()?;
 
     Ok(())
 }
