@@ -1,6 +1,6 @@
 open Core
-open Regex
-open ParseTools
+open Flare.Regex
+open Flare.ParseTools
 
 let () =
   Command.basic ~summary:"Match a string against a regex"

@@ -65,7 +65,7 @@ module Make = functor (Ord: Map.OrderedType) -> struct
         include Map
       let add_extend k v m =
           let value_to_insert =
-          match IntMap.find_opt k m with
+          match intmapfindopt k m with
           | Some existing -> existing @ v
           | None -> v in
           let m = IntMap.remove k m in
@@ -106,12 +106,23 @@ let list_map_union = IntMap.merge (fun key a b ->
   | Some a, None -> Some a
   | None, Some b -> Some b
   | None, None -> None
-)
+);;
 
+let intmapfindopt k m =
+  try
+    Some (IntMap.find k m)
+  with
+    Not_found -> None;;
+
+let intlistmapfindopt k m =
+  try
+    Some (IntListMap.find k m)
+  with
+    Not_found -> None;;
 
 let intmap_add_extend k v m =
   let value_to_insert =
-  match IntMap.find_opt k m with
+  match intmapfindopt k m with
   | Some existing -> existing @ v
   | None -> v in
   let m = IntMap.remove k m in
@@ -119,17 +130,17 @@ let intmap_add_extend k v m =
 
 let intlistmap_add_extend k v m =
   let value_to_insert =
-  match IntListMap.find_opt k m with
+  match intlistmapfindopt k m with
   | Some existing -> existing @ v
   | None -> v in
   let m = IntListMap.remove k m in
   IntListMap.add k value_to_insert m
 
 let merge_nodes a b {edges; start; final} =
-  let edges = match IntMap.find_opt b edges with
+  let edges = match intmapfindopt b edges with
   | Some b_nexts -> intmap_add_extend a b_nexts edges
   | None -> edges in
-  let edges = match IntMap.find_opt a edges with
+  let edges = match intmapfindopt a edges with
   | Some a_nexts -> IntMap.add a (List.filter (fun (a_next, tr) -> a_next != b) a_nexts ) (IntMap.remove a edges)
   | None -> edges in
   let edges = IntMap.map (List.map (fun (v, tr) -> ((if v = b then a else v), tr))) edges in
@@ -356,7 +367,7 @@ let save_s_to_file s path =
   close_out oc
 
 let rec step c finger edges =
-  match (IntMap.find_opt finger edges) with
+  match (intmapfindopt finger edges) with
   | None -> []
   | Some transitions ->
     (List.fold_left transitions ~init:[] ~f:(fun output transition ->
@@ -371,7 +382,7 @@ and follow_transition (next, transition) c edges : int list =
 let rec is_final_reachable_by_epsilon fingers {edges; start; final} =
   List.exists fingers (fun finger -> finger = final) ||
   List.exists fingers (fun finger ->
-    match IntMap.find_opt finger edges with
+    match intmapfindopt finger edges with
     | None -> false
     | Some transitions -> is_final_reachable_by_epsilon
       (List.dedup (List.fold_left transitions ~init:[] ~f:(fun output (next, c) ->
@@ -413,7 +424,7 @@ let eval_debug s {edges; start; final} =
 
 (* Follow epsilon transitions from node x, returns a list of all the transitions to reachable nodes*)
 let rec epsilon_closure x edges =
- match IntMap.find_opt x edges with
+ match intmapfindopt x edges with
    | None -> [x]
    | Some transitions -> x::(List.concat_map transitions (fun (next, c) ->
        if c = `Epsilon then epsilon_closure next edges else []
@@ -450,7 +461,7 @@ let compare_transition_pair (a_node, a_transition) (b_node, b_transition) =
       (* For every node within the set, find its transition nodes *)
       dfa_node_set |> List.fold_left ~init:[] ~f:(fun output node ->
           step node
-        match IntMap.find_opt node edges with
+        match intmapfindopt node edges with
         | Some transitions -> transitions |> List.map ~f:(fun (_, _) -> )
         (* If one of the nodes transitions to nothing, then just continue *)
         | None -> output
@@ -500,7 +511,7 @@ let nfa_to_dfa {edges; start; final} =
         let subnodes = supernode in
         (* Look up each subnode in the NFA to find the nodes it transitions to. *)
         let transitions = subnodes
-                          |> List.concat_map ~f:(fun subnode -> IntMap.find_opt subnode edges
+                          |> List.concat_map ~f:(fun subnode -> intmapfindopt subnode edges
                                                                 |> Option.value ~default:[]) in
         (* Group the transitions by their transition characters *)
         let transition_groups = transitions

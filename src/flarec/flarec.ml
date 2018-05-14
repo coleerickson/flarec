@@ -1,5 +1,5 @@
 open Core
-open Compile
+open Flare.Compile
 
 let () =
   Command.basic ~summary:"Compile a Flare program"

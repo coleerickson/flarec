@@ -75,7 +75,7 @@ let compile_regex_and_get_fn r =
 
 		(* Now we create the extended if-else-if to handle each transition *)
 		let transitions = edges
-      |> IntListMap.find_opt node
+      |> intlistmapfindopt node
       |> Option.value ~default:[]
       (* Sort order is important so that we take any character transitions before any wildcard transitions *)
       |> List.sort ~cmp:compare_transition_pair

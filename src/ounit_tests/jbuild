@@ -1,9 +1,6 @@
 (jbuild_version 1)
 
-; (copy_files# lib/*{.ml,.mli,.mll,.mly})
-(copy_files# match_regex/*{.ml,.mli,.mll,.mly})
-
 (executable
     ((name ounitTests)
-     (libraries (core llvm oUnit))
+     (libraries (core llvm oUnit flare))
      ))
