@@ -22,7 +22,7 @@ Boston,United States,4628910
 Concord,United States,42695
 ```
 
-The output is:
+The output (in `a.csv`) is:
 ```
 Boston,4628910
 ```
